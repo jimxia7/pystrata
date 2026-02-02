@@ -26,7 +26,6 @@ import numpy as np
 import scipy.integrate
 from matplotlib.colors import LogNorm, TwoSlopeNorm
 from scipy.interpolate import interp1d
-import pickle
 from pathlib import Path
 
 try:
@@ -140,19 +139,6 @@ class OutputCollection(collections.abc.Collection):
         for o in self:
             o.reset()
 
-    def to_pickle(self,pickle_file_name):
-        if not pickle:
-            raise RuntimeError("Install `pickle` library.")
-
-        pickle_file_path = Path(pickle_file_name)
-
-        if pickle_file_path.suffix.lower() == '.pkl':
-            with open(pickle_file_name, "wb") as f:
-                pickle.dump(self.outputs, f)
-        else:
-            print('output file extension is not .pkl')
-
-        return
 
 
 def append_arrays(many, single):
@@ -275,22 +261,6 @@ class Output:
 
         return df
     
-    def to_pickle(self,pickle_file_name):
-        if not pickle:
-            raise RuntimeError("Install `pickle` library.")
-
-        df = self.to_dataframe()
-        pickle_file_path = Path(pickle_file_name)
-
-        if pickle_file_path.suffix.lower() == 'pkl':
-            with open(pickle_file_name, "wb") as f:
-                pickle.dump(df, f)
-        else:
-            print('output file extension is not .pkl')
-
-        return
-    
-
     @staticmethod
     def _get_xy(refs, values):
         return refs, values
@@ -780,27 +750,6 @@ class ProfileBasedOutput(Output):
 
         return df
     
-    def to_pickle(self, pickle_out_file):
-        if not pickle:
-            raise RuntimeError("Install `pickle` library.")
-
-        if isinstance(self.names[0], tuple):
-            columns = pd.MultiIndex.from_tuples(self.names)
-        else:
-            columns = self.names
-
-        # Ignore zeros in the data
-        if self.values.ndim == 1:
-            n = 1
-            values = np.exp(np.array([self._ln_interp_1(i, ref) for i in range(n)])).T
-        else:
-            n = self.values.shape[1]
-            values = np.exp(np.array([self._ln_interp(i, ref) for i in range(n)])).T
-
-        df = pd.DataFrame(values, index=ref, columns=columns)
-
-        return df
-
 
 class MaxStrainProfile(ProfileBasedOutput):
     xlabel = "Max. Strain (dec)"
