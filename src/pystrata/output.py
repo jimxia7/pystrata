@@ -140,7 +140,7 @@ class OutputCollection(collections.abc.Collection):
         for o in self:
             o.reset()
 
-    def to_pickle(self,pickle_file_name):
+    def to_pickle(self, pickle_file_name):
         if not pickle:
             raise RuntimeError("Install `pickle` library.")
 
@@ -275,7 +275,7 @@ class Output:
 
         return df
 
-    def to_pickle(self,pickle_file_name):
+    def to_pickle(self, pickle_file_name):
         if not pickle:
             raise RuntimeError("Install `pickle` library.")
 
@@ -289,7 +289,6 @@ class Output:
             print("output file extension is not .pkl")
 
         return
-
 
     @staticmethod
     def _get_xy(refs, values):
@@ -732,7 +731,7 @@ class ProfileBasedOutput(Output):
 
         return _ln_interped
 
-    def _ln_interp_1(self,i,ref):
+    def _ln_interp_1(self, i, ref):
 
         _ref = self.refs
         # Only select points with valid entries

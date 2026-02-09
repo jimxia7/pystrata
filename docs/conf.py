@@ -16,7 +16,7 @@ import os
 import sys
 
 # Add the source directory to the Python path
-sys.path.insert(0, os.path.abspath('../src'))
+sys.path.insert(0, os.path.abspath("../src"))
 
 try:
     import pystrata
@@ -70,17 +70,17 @@ release = version
 
 # HTML theme
 html_theme = "furo"
-html_static_path = ['_static']
-html_css_files = ['custom.css']
+html_static_path = ["_static"]
+html_css_files = ["custom.css"]
 
 # NBSphinx config
-nbsphinx_execute = 'never'
+nbsphinx_execute = "never"
 nbsphinx_allow_errors = True
 nbsphinx_timeout = 300
 
 # Bibtex config
-bibtex_reference_style = 'author_year'
-bibtex_default_style = 'plain'
+bibtex_reference_style = "author_year"
+bibtex_default_style = "plain"
 
 # Napoleon config
 napoleon_numpy_docstring = True

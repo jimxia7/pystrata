@@ -23,7 +23,7 @@ from importlib.metadata import version
 
 from . import kappa, motion, output, propagation, site, tools, variation
 
-__all__ = ["motion", "propagation", "output", "site", "tools", "variation","kappa"]
+__all__ = ["motion", "propagation", "output", "site", "tools", "variation", "kappa"]
 
 __author__ = "Albert Kottke"
 __copyright__ = "Copyright 2016-2024 Albert Kottke"

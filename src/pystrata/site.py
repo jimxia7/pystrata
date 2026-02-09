@@ -111,7 +111,7 @@ class NonlinearProperty:
             elif param == "damping":
                 self._limits = (0, 0.49)
             else:
-                self._limits = (0,1)
+                self._limits = (0, 1)
         else:
             self._limits = limits
         self._update()
@@ -1143,7 +1143,9 @@ class WangSoilType(SoilType):
                     -kwds["void_ratio"] - 3.31 * kwds["plas_index"]
                 ) * (1 + 148 * kwds["plas_index"] ** 1.95) * (
                     kwds["stress_mean"] * KPA_TO_ATM
-                ) ** -0.2 + (0.5 * kwds["plas_index"]) ** (
+                ) ** -0.2 + (
+                    0.5 * kwds["plas_index"]
+                ) ** (
                     2.54 - 1.8 * kwds["void_ratio"]
                 )
             else:
@@ -1151,7 +1153,9 @@ class WangSoilType(SoilType):
                     -1.91 * kwds["void_ratio"] - 6.5 * kwds["plas_index"]
                 ) * (1 + 106.75 * kwds["plas_index"] ** 1.64) * (
                     kwds["stress_mean"] * KPA_TO_ATM
-                ) ** -0.19 + (0.46 * kwds["plas_index"]) ** (
+                ) ** -0.19 + (
+                    0.46 * kwds["plas_index"]
+                ) ** (
                     1.73 - 1.34 * kwds["void_ratio"]
                 )
 
@@ -2165,65 +2169,67 @@ class Profile(collections.abc.Container):
         return np.array([getattr(layer, attr) for layer in self])
 
 
-
 class CreateSiteProfile:
     """
     Create a pystrata profile using parameters in a Pandas dataframe.
     """
-    def __init__(self,
-                 df_SoilProfile,
-                 Rock_velocity=3000.0,
-                 Rock_UnitWeight=25.9,
-                 ReferenceRockDamping=0.01,
-                 damping_shift = 0.00):
+
+    def __init__(
+        self,
+        df_SoilProfile,
+        Rock_velocity=3000.0,
+        Rock_UnitWeight=25.9,
+        ReferenceRockDamping=0.01,
+        damping_shift=0.00,
+    ):
         self.df = df_SoilProfile
         self.reference_rock_velocity = Rock_velocity
         self.reference_rock_unit_weight = Rock_UnitWeight
         self.reference_rock_damping = ReferenceRockDamping
         self.damping_shift = damping_shift
 
-    def shift_damping(self,soil_type):
+    def shift_damping(self, soil_type):
 
         if self.damping_shift == 0.0:
             return soil_type
         else:
-            name = soil_type.name+f" Shift Damping by {self.damping_shift}"
+            name = soil_type.name + f" Shift Damping by {self.damping_shift}"
             unit_wt = soil_type.unit_wt
 
             mod_reduc_name = (
-                             f"{soil_type.mod_reduc.name} "
-                             f"Shift Damping by {self.damping_shift}"
-                             )
+                f"{soil_type.mod_reduc.name} " f"Shift Damping by {self.damping_shift}"
+            )
             mod_reduc_strain = soil_type.mod_reduc.strains
             mod_reduc_value = soil_type.mod_reduc.values
             mod_reduc_limit = soil_type.mod_reduc._limits
 
             damping_name = (
-                            f"{soil_type.damping.name} "
-                            f" Shift Damping by {self.damping_shift}"
-                           )
+                f"{soil_type.damping.name} " f" Shift Damping by {self.damping_shift}"
+            )
             damping_strain = soil_type.damping.strains
-            damping_value = soil_type.damping.values+self.damping_shift
+            damping_value = soil_type.damping.values + self.damping_shift
             damping_limit = soil_type.damping._limits
 
-            mrcurve = NonlinearProperty(name=mod_reduc_name,
-                                                      strains=mod_reduc_strain,
-                                                      values = mod_reduc_value,
-                                                      param = "mod_reduc",
-                                                      limits = mod_reduc_limit)
-            dcurve = NonlinearProperty(name=damping_name,
-                                                     strains=damping_strain,
-                                                     values = damping_value,
-                                                     param = "damping",
-                                                     limits = damping_limit)
+            mrcurve = NonlinearProperty(
+                name=mod_reduc_name,
+                strains=mod_reduc_strain,
+                values=mod_reduc_value,
+                param="mod_reduc",
+                limits=mod_reduc_limit,
+            )
+            dcurve = NonlinearProperty(
+                name=damping_name,
+                strains=damping_strain,
+                values=damping_value,
+                param="damping",
+                limits=damping_limit,
+            )
 
-            damping_shifted_soil_type = SoilType(name = name,
-                                                 unit_wt = unit_wt,
-                                                 mod_reduc=mrcurve,
-                                                 damping=dcurve)
+            damping_shifted_soil_type = SoilType(
+                name=name, unit_wt=unit_wt, mod_reduc=mrcurve, damping=dcurve
+            )
 
             return damping_shifted_soil_type
-
 
     def extract_all_mrd_names_from_published_curve(self):
         try:
@@ -2235,7 +2241,7 @@ class CreateSiteProfile:
 
         names = []
 
-        for label,cfg in data.items():
+        for label, cfg in data.items():
             names.append(cfg["name"])
 
         return names
@@ -2280,46 +2286,50 @@ class CreateSiteProfile:
 
                 # Calculate the mid-depth of the current layer in feet
                 # to select EPRI MRD curves
-                mid_layer_depth = 3.28 * (total_depth + thickness/2.0)
-                total_depth += thickness # in meters
+                mid_layer_depth = 3.28 * (total_depth + thickness / 2.0)
+                total_depth += thickness  # in meters
 
                 # Assign modulus reduction and damping curves
                 if mrd_curve == "Linear Elastic":
-                    soil_type = SoilType(description,
-                                                       unit_weight,
-                                                       None,
-                                                       0.01)
+                    soil_type = SoilType(description, unit_weight, None, 0.01)
 
                 elif mrd_curve == "Darendeli (2001)":
-                    soil_type = DarendeliSoilType(unit_weight,
-                                                                name=description,
-                                                                plas_index=plasticity_index,
-                                                                ocr=ocr,
-                                                                stress_mean=mean_stress)
+                    soil_type = DarendeliSoilType(
+                        unit_weight,
+                        name=description,
+                        plas_index=plasticity_index,
+                        ocr=ocr,
+                        stress_mean=mean_stress,
+                    )
                 elif mrd_curve is None or mrd_curve == "":
                     raise ValueError("MRD Curve must be specified for all layers.")
                 else:
                     if mrd_curve == "EPRI":
-                        epri_mrd_curve = "EPRI (93), " + np.array(
-                            ["0-20 ft",
-                             "20-50 ft",
-                             "50-120 ft",
-                             "120-250 ft",
-                             "250-500 ft",
-                             "500-1000 ft"]
-                        )[np.searchsorted([20, 50, 120, 250, 500], mid_layer_depth)]
+                        epri_mrd_curve = (
+                            "EPRI (93), "
+                            + np.array(
+                                [
+                                    "0-20 ft",
+                                    "20-50 ft",
+                                    "50-120 ft",
+                                    "120-250 ft",
+                                    "250-500 ft",
+                                    "500-1000 ft",
+                                ]
+                            )[np.searchsorted([20, 50, 120, 250, 500], mid_layer_depth)]
+                        )
                         soil_type = SoilType.from_published(
                             name=description,
                             unit_wt=unit_weight,
                             model=epri_mrd_curve,
-                            model_damping = epri_mrd_curve
+                            model_damping=epri_mrd_curve,
                         )
                     elif mrd_curve in all_mrd_names:
                         soil_type = SoilType.from_published(
                             name=description,
                             unit_wt=unit_weight,
                             model=mrd_curve,
-                            model_damping = mrd_curve
+                            model_damping=mrd_curve,
                         )
                     else:
                         raise ValueError(
@@ -2328,9 +2338,7 @@ class CreateSiteProfile:
                         )
 
                 shifted_damping_soil_type = self.shift_damping(soil_type)
-                layers.append(Layer(shifted_damping_soil_type,
-                                    thickness,
-                                    velocity))
+                layers.append(Layer(shifted_damping_soil_type, thickness, velocity))
 
         layers.append(
             Layer(
@@ -2338,10 +2346,10 @@ class CreateSiteProfile:
                     "Reference Rock",
                     self.reference_rock_unit_weight,
                     None,
-                    self.reference_rock_damping
+                    self.reference_rock_damping,
                 ),
                 0,
-                self.reference_rock_velocity
+                self.reference_rock_velocity,
             )
         )
 

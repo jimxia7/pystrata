@@ -244,12 +244,14 @@ class TimeSeriesMotion(Motion):
         )
 
     @classmethod
-    def load_at2_file(cls,
-                      filename,
-                      *,
-                      scale_param = "N/A",
-                      scale: float = 1.0,
-                      scale_pga: float = 0.5,):
+    def load_at2_file(
+        cls,
+        filename,
+        *,
+        scale_param="N/A",
+        scale: float = 1.0,
+        scale_pga: float = 0.5,
+    ):
         """Read an AT2 formatted time series.
 
         Parameters
@@ -260,15 +262,14 @@ class TimeSeriesMotion(Motion):
             Scale factor to apply to the motion.
         """
         with open(filename) as fp:
-            next(fp) # 1) PEER line
-            description = next(fp).strip() # 2) e.g., event/site line
-            next(fp) # 3) "ACCELERATION TIME SERIES IN UNITS OF G"
-            header = next(fp) # 4) "NPTS=   7999, DT=   .0050 SEC,"
+            next(fp)  # 1) PEER line
+            description = next(fp).strip()  # 2) e.g., event/site line
+            next(fp)  # 3) "ACCELERATION TIME SERIES IN UNITS OF G"
+            header = next(fp)  # 4) "NPTS=   7999, DT=   .0050 SEC,"
 
             # Extract DT (supports leading dot, scientific notation, spaces/commas)
             m_dt = re.search(
-                r"DT\s*=\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)",
-                header
+                r"DT\s*=\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)", header
             )
             if not m_dt:
                 raise ValueError(f"Could not parse DT from header: {header!r}")
@@ -298,33 +299,34 @@ class TimeSeriesMotion(Motion):
 
     @classmethod
     def load_txt_file(
-            cls,
-            filename,
-            *,
-            scale_param = "N/A",
-            scale: float = 1.0,
-            scale_pga: float = 0.5,
-            time_acceleration: bool = True,
-            time_col: int = 0,
-            value_col: int = 1,
-            dt = None,
-            skiprows: int = 0,
-            delimiter=None,):
+        cls,
+        filename,
+        *,
+        scale_param="N/A",
+        scale: float = 1.0,
+        scale_pga: float = 0.5,
+        time_acceleration: bool = True,
+        time_col: int = 0,
+        value_col: int = 1,
+        dt=None,
+        skiprows: int = 0,
+        delimiter=None,
+    ):
 
         if time_acceleration:
             data = np.loadtxt(
-                    filename,
-                    delimiter=delimiter,
-                    comments="#",
-                    skiprows=skiprows,
-                    ndmin=2,
-                    )
+                filename,
+                delimiter=delimiter,
+                comments="#",
+                skiprows=skiprows,
+                ndmin=2,
+            )
 
             if data.shape[1] <= max(time_col, value_col):
-                    raise ValueError(
-                        f"Requested columns time_col={time_col}, value_col={value_col} "
-                        f"but file has only {data.shape[1]} column(s)."
-                    )
+                raise ValueError(
+                    f"Requested columns time_col={time_col}, value_col={value_col} "
+                    f"but file has only {data.shape[1]} column(s)."
+                )
 
             t = np.asarray(data[:, time_col], dtype=float)
             a = np.asarray(data[:, value_col], dtype=float)
@@ -343,11 +345,11 @@ class TimeSeriesMotion(Motion):
             spread = np.max(np.abs(dt - dt_med)) / dt_med
             if spread > 1e-3:
                 raise ValueError(
-                        "Time column is not uniformly spaced "
-                        "(relative spread {spread:.2e} > 1e-3). "
-                        "Resample your data to a uniform time step "
-                        "or provide a cleaner file."
-                    )
+                    "Time column is not uniformly spaced "
+                    "(relative spread {spread:.2e} > 1e-3). "
+                    "Resample your data to a uniform time step "
+                    "or provide a cleaner file."
+                )
 
             if scale_param == "pga":
                 a = a * scale_pga / pga
@@ -363,16 +365,17 @@ class TimeSeriesMotion(Motion):
         elif not time_acceleration:
 
             data = np.loadtxt(
-                    filename,
-                    delimiter=delimiter,
-                    comments="#",
-                    skiprows=skiprows,
-                    ndmin=1,
-                    )
+                filename,
+                delimiter=delimiter,
+                comments="#",
+                skiprows=skiprows,
+                ndmin=1,
+            )
 
             if dt is None:
-                raise ValueError("When time_acceleration is False, "
-                                 "dt must be provided.")
+                raise ValueError(
+                    "When time_acceleration is False, " "dt must be provided."
+                )
 
             a = np.asarray(data, dtype=float)
             pga = np.max(np.abs(a))
