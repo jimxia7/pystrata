@@ -2268,7 +2268,7 @@ class CreateSiteProfile:
                 def _canonize_model(s):
                     if pd.isna(s):
                         return None
-                    s = str(s).replace("\u00A0", " ")
+                    s = str(s).replace("\u00a0", " ")
                     s = re.sub(r"\s+", " ", s).strip()
                     key = s.lower()
                     aliases = {
