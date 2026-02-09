@@ -267,12 +267,23 @@ class TimeSeriesMotion(Motion):
             next(fp)  # 3) "ACCELERATION TIME SERIES IN UNITS OF G"
             header = next(fp)  # 4) "NPTS=   7999, DT=   .0050 SEC,"
 
-            # Extract DT (supports leading dot, scientific notation, spaces/commas)
+
+            # Try modern "DT= 0.005" format
             m_dt = re.search(
-                r"DT\s*=\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)", header
+                r"DT\s*=\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)",
+                header,
             )
+
+            # Fallback: legacy "4096 0.0100 NPTS, DT" format
+            if not m_dt:
+                m_dt = re.search(
+                    r"\b(\d+(?:\.\d+)?)\s+NPTS,\s*DT\b",
+                    header,
+                )
+
             if not m_dt:
                 raise ValueError(f"Could not parse DT from header: {header!r}")
+
             time_step = float(m_dt.group(1))
 
             # Optional: extract NPTS to trim data if needed
