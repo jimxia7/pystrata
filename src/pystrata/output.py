@@ -20,8 +20,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 import collections
-import pickle
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -139,20 +137,6 @@ class OutputCollection(collections.abc.Collection):
     def reset(self):
         for o in self:
             o.reset()
-
-    def to_pickle(self, pickle_file_name):
-        if not pickle:
-            raise RuntimeError("Install `pickle` library.")
-
-        pickle_file_path = Path(pickle_file_name)
-
-        if pickle_file_path.suffix.lower() == ".pkl":
-            with open(pickle_file_name, "wb") as f:
-                pickle.dump(self.outputs, f)
-        else:
-            print("output file extension is not .pkl")
-
-        return
 
 
 def append_arrays(many, single):
@@ -274,21 +258,6 @@ class Output:
         df = pd.DataFrame(self.values, index=self.refs, columns=columns)
 
         return df
-
-    def to_pickle(self, pickle_file_name):
-        if not pickle:
-            raise RuntimeError("Install `pickle` library.")
-
-        df = self.to_dataframe()
-        pickle_file_path = Path(pickle_file_name)
-
-        if pickle_file_path.suffix.lower() == "pkl":
-            with open(pickle_file_name, "wb") as f:
-                pickle.dump(df, f)
-        else:
-            print("output file extension is not .pkl")
-
-        return
 
     @staticmethod
     def _get_xy(refs, values):

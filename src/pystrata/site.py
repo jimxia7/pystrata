@@ -34,7 +34,12 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import scipy.constants
-import tomllib
+
+try:
+    import tomllib  # Python 3.11+
+except ModuleNotFoundError:
+    import tomli as tomllib  # Python 3.10 and earlier
+
 from scipy.interpolate import interp1d
 
 from .motion import GRAVITY, WaveField
