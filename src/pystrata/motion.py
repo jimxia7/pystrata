@@ -22,11 +22,11 @@
 """Classes used to define input motions."""
 
 import enum
+import os
 import re
 
 import numpy as np
 import pyrvt
-import os
 
 # Gravity in m/sec²
 from scipy.constants import g as GRAVITY
@@ -244,10 +244,10 @@ class TimeSeriesMotion(Motion):
         )
 
     @classmethod
-    def load_at2_file(cls, 
-                      filename, 
+    def load_at2_file(cls,
+                      filename,
                       *,
-                      scale_param = 'N/A',
+                      scale_param = "N/A",
                       scale: float = 1.0,
                       scale_pga: float = 0.5,):
         """Read an AT2 formatted time series.
@@ -260,10 +260,10 @@ class TimeSeriesMotion(Motion):
             Scale factor to apply to the motion.
         """
         with open(filename) as fp:
-            next(fp)                               # 1) PEER line
-            description = next(fp).strip()         # 2) e.g., event/site line
-            next(fp)                               # 3) "ACCELERATION TIME SERIES IN UNITS OF G"
-            header = next(fp)                      # 4) "NPTS=   7999, DT=   .0050 SEC,"
+            next(fp) # 1) PEER line
+            description = next(fp).strip() # 2) e.g., event/site line
+            next(fp) # 3) "ACCELERATION TIME SERIES IN UNITS OF G"
+            header = next(fp) # 4) "NPTS=   7999, DT=   .0050 SEC,"
 
             # Extract DT (supports leading dot, scientific notation, spaces/commas)
             m_dt = re.search(
@@ -287,21 +287,21 @@ class TimeSeriesMotion(Motion):
 
         pga = np.max(np.abs(accels))
 
-        if scale_param == 'pga':
+        if scale_param == "pga":
             accels = accels * scale_pga / pga
-        elif scale_param == 'scale':
+        elif scale_param == "scale":
             accels = accels * scale
         else:
             accels = accels
-            
+
         return cls(filename, description, time_step, accels)
-    
+
     @classmethod
     def load_txt_file(
             cls,
             filename,
             *,
-            scale_param = 'N/A',
+            scale_param = "N/A",
             scale: float = 1.0,
             scale_pga: float = 0.5,
             time_acceleration: bool = True,
@@ -310,8 +310,8 @@ class TimeSeriesMotion(Motion):
             dt = None,
             skiprows: int = 0,
             delimiter=None,):
-        
-        if time_acceleration == True:
+
+        if time_acceleration:
             data = np.loadtxt(
                     filename,
                     delimiter=delimiter,
@@ -319,7 +319,7 @@ class TimeSeriesMotion(Motion):
                     skiprows=skiprows,
                     ndmin=2,
                     )
-    
+
             if data.shape[1] <= max(time_col, value_col):
                     raise ValueError(
                         f"Requested columns time_col={time_col}, value_col={value_col} "
@@ -343,13 +343,15 @@ class TimeSeriesMotion(Motion):
             spread = np.max(np.abs(dt - dt_med)) / dt_med
             if spread > 1e-3:
                 raise ValueError(
-                        f"Time column is not uniformly spaced (relative spread {spread:.2e} > 1e-3). "
-                        "Resample your data to a uniform time step or provide a cleaner file."
+                        "Time column is not uniformly spaced "
+                        "(relative spread {spread:.2e} > 1e-3). "
+                        "Resample your data to a uniform time step "
+                        "or provide a cleaner file."
                     )
 
-            if scale_param == 'pga':
+            if scale_param == "pga":
                 a = a * scale_pga / pga
-            elif scale_param == 'scale':
+            elif scale_param == "scale":
                 a = a * scale
             else:
                 a = a
@@ -357,8 +359,8 @@ class TimeSeriesMotion(Motion):
             desc = f"TXT file: {os.path.basename(filename)}"
 
             return cls(filename, desc, dt_med, a)
-        
-        elif time_acceleration == False:
+
+        elif not time_acceleration:
 
             data = np.loadtxt(
                     filename,
@@ -367,16 +369,17 @@ class TimeSeriesMotion(Motion):
                     skiprows=skiprows,
                     ndmin=1,
                     )
-    
-            if dt == None:
-                raise ValueError("When time_acceleration is False, dt must be provided.")
+
+            if dt is None:
+                raise ValueError("When time_acceleration is False, "
+                                 "dt must be provided.")
 
             a = np.asarray(data, dtype=float)
             pga = np.max(np.abs(a))
 
-            if scale_param == 'pga':
+            if scale_param == "pga":
                 a = a * scale_pga / pga
-            elif scale_param == 'scale':
+            elif scale_param == "scale":
                 a = a * scale
             else:
                 a = a

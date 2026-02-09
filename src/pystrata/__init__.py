@@ -21,7 +21,7 @@
 # SOFTWARE.
 from importlib.metadata import version
 
-from . import motion, output, propagation, site, tools, variation, kappa
+from . import kappa, motion, output, propagation, site, tools, variation
 
 __all__ = ["motion", "propagation", "output", "site", "tools", "variation","kappa"]
 

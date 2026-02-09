@@ -22,6 +22,7 @@
 from __future__ import annotations
 
 import collections
+import re
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -33,10 +34,9 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import scipy.constants
-import tomli
-import re
+import tomllib
 from scipy.interpolate import interp1d
-from pathlib import Path
+
 from .motion import GRAVITY, WaveField
 
 COMP_MODULUS_MODEL = "dormieux"
@@ -53,7 +53,7 @@ def _load_published_curves():
     fpath = Path(__file__).parent / "data" / "published_curves.toml"
 
     with fpath.open("rb") as fp:
-        models = tomli.load(fp)["models"]
+        models = tomllib.load(fp)["models"]
 
     # Count to make sure there aren't repeated names
     counts = collections.Counter([m["name"] for m in models])
@@ -2165,13 +2165,13 @@ class Profile(collections.abc.Container):
         return np.array([getattr(layer, attr) for layer in self])
 
 
-import pystrata
+
 class CreateSiteProfile:
     """
     Create a pystrata profile using parameters in a Pandas dataframe.
     """
-    def __init__(self, 
-                 df_SoilProfile, 
+    def __init__(self,
+                 df_SoilProfile,
                  Rock_velocity=3000.0,
                  Rock_UnitWeight=25.9,
                  ReferenceRockDamping=0.01,
@@ -2181,40 +2181,56 @@ class CreateSiteProfile:
         self.reference_rock_unit_weight = Rock_UnitWeight
         self.reference_rock_damping = ReferenceRockDamping
         self.damping_shift = damping_shift
-    
+
     def shift_damping(self,soil_type):
 
         if self.damping_shift == 0.0:
             return soil_type
         else:
-            name = soil_type.name+f' Shift Damping by {self.damping_shift}'
+            name = soil_type.name+f" Shift Damping by {self.damping_shift}"
             unit_wt = soil_type.unit_wt
 
-            mod_reduc_name = soil_type.mod_reduc.name+f' Shift Damping by {self.damping_shift}'
+            mod_reduc_name = (
+                             f"{soil_type.mod_reduc.name} "
+                             f"Shift Damping by {self.damping_shift}"
+                             )
             mod_reduc_strain = soil_type.mod_reduc.strains
             mod_reduc_value = soil_type.mod_reduc.values
             mod_reduc_limit = soil_type.mod_reduc._limits
 
-            damping_name = soil_type.damping.name+f' Shift Damping by {self.damping_shift}'
+            damping_name = (
+                            f"{soil_type.damping.name} "
+                            f" Shift Damping by {self.damping_shift}"
+                           )
             damping_strain = soil_type.damping.strains
             damping_value = soil_type.damping.values+self.damping_shift
             damping_limit = soil_type.damping._limits
 
-            mrcurve = pystrata.site.NonlinearProperty(name=mod_reduc_name, strains=mod_reduc_strain, values = mod_reduc_value, param = 'mod_reduc', limits = mod_reduc_limit)
-            dcurve = pystrata.site.NonlinearProperty(name=damping_name, strains=damping_strain, values = damping_value, param = 'damping', limits = damping_limit)
+            mrcurve = NonlinearProperty(name=mod_reduc_name,
+                                                      strains=mod_reduc_strain,
+                                                      values = mod_reduc_value,
+                                                      param = "mod_reduc",
+                                                      limits = mod_reduc_limit)
+            dcurve = NonlinearProperty(name=damping_name,
+                                                     strains=damping_strain,
+                                                     values = damping_value,
+                                                     param = "damping",
+                                                     limits = damping_limit)
 
-            damping_shifted_soil_type = pystrata.site.SoilType(name = name,unit_wt = unit_wt,mod_reduc=mrcurve,damping=dcurve)
+            damping_shifted_soil_type = SoilType(name = name,
+                                                 unit_wt = unit_wt,
+                                                 mod_reduc=mrcurve,
+                                                 damping=dcurve)
 
             return damping_shifted_soil_type
 
 
     def extract_all_mrd_names_from_published_curve(self):
-        pystrata.site._load_published_curves()
         try:
-            data = pystrata.site.PUBLISHED_CURVES
+            data = PUBLISHED_CURVES
         except FileNotFoundError:
             data = {}
-        except toml.TomlDecodeError:
+        except tomllib.TOMLDecodeError:
             data = {}
 
         names = []
@@ -2230,70 +2246,76 @@ class CreateSiteProfile:
 
         all_mrd_names = self.extract_all_mrd_names_from_published_curve()
         for index, row in self.df.iterrows():
-            
-            if pd.notnull(row['Velocity (m/s)']):
+
+            if pd.notnull(row["Velocity (m/s)"]):
                 # Pull data from excel
-                description = row['Description']
-                thickness = row['Thickness (m)']
-                velocity = row['Velocity (m/s)']
-                unit_weight = row['Unit Weight (kN/m3)']
-                plasticity_index = row['Plasticity Index']
-                ocr = row['OCR']
-                mean_stress = row['Mean Effective Stress (kPa)']
-                mrd_curve_raw = row['MRD Curve']
+                description = row["Description"]
+                thickness = row["Thickness (m)"]
+                velocity = row["Velocity (m/s)"]
+                unit_weight = row["Unit Weight (kN/m3)"]
+                plasticity_index = row["Plasticity Index"]
+                ocr = row["OCR"]
+                mean_stress = row["Mean Effective Stress (kPa)"]
+                mrd_curve_raw = row["MRD Curve"]
 
                 # normalize MRD model strings to avoid hidden whitespace/aliases
                 def _canonize_model(s):
                     if pd.isna(s):
                         return None
-                    s = str(s).replace('\u00A0', ' ')
-                    s = re.sub(r'\s+', ' ', s).strip()
+                    s = str(s).replace("\u00A0", " ")
+                    s = re.sub(r"\s+", " ", s).strip()
                     key = s.lower()
                     aliases = {
-                        'seed and idriss': 'Seed & Idriss',
-                        'seed & idriss': 'Seed & Idriss',
-                        'seed-idriss': 'Seed & Idriss',
-                        'seed & idriss (1970)': 'Seed & Idriss',
-                        'epri': 'EPRI',
-                        'epri (93)': 'EPRI',
-                        'vucetic & dobry (91)': 'Vucetic & Dobry (91)',
+                        "seed and idriss": "Seed & Idriss",
+                        "seed & idriss": "Seed & Idriss",
+                        "seed-idriss": "Seed & Idriss",
+                        "seed & idriss (1970)": "Seed & Idriss",
+                        "epri": "EPRI",
+                        "epri (93)": "EPRI",
+                        "vucetic & dobry (91)": "Vucetic & Dobry (91)",
                     }
                     return aliases.get(key, s)
 
                 mrd_curve = _canonize_model(mrd_curve_raw)
 
-                # Calculate the mid-depth of the current layer in feet to select EPRI MRD curves
+                # Calculate the mid-depth of the current layer in feet
+                # to select EPRI MRD curves
                 mid_layer_depth = 3.28 * (total_depth + thickness/2.0)
                 total_depth += thickness # in meters
-                
+
                 # Assign modulus reduction and damping curves
-                if mrd_curve == 'Linear Elastic':
-                    soil_type = pystrata.site.SoilType(description,
+                if mrd_curve == "Linear Elastic":
+                    soil_type = SoilType(description,
                                                        unit_weight,
                                                        None,
                                                        0.01)
-                    
-                elif mrd_curve == 'Darendeli (2001)':
-                    soil_type = pystrata.site.DarendeliSoilType(unit_weight,
+
+                elif mrd_curve == "Darendeli (2001)":
+                    soil_type = DarendeliSoilType(unit_weight,
                                                                 name=description,
                                                                 plas_index=plasticity_index,
                                                                 ocr=ocr,
                                                                 stress_mean=mean_stress)
-                elif mrd_curve is None or mrd_curve == '':
+                elif mrd_curve is None or mrd_curve == "":
                     raise ValueError("MRD Curve must be specified for all layers.")
                 else:
-                    if mrd_curve == 'EPRI':
+                    if mrd_curve == "EPRI":
                         epri_mrd_curve = "EPRI (93), " + np.array(
-                            ["0-20 ft", "20-50 ft", "50-120 ft", "120-250 ft", "250-500 ft", "500-1000 ft"]
+                            ["0-20 ft",
+                             "20-50 ft",
+                             "50-120 ft",
+                             "120-250 ft",
+                             "250-500 ft",
+                             "500-1000 ft"]
                         )[np.searchsorted([20, 50, 120, 250, 500], mid_layer_depth)]
-                        soil_type = pystrata.site.SoilType.from_published(
+                        soil_type = SoilType.from_published(
                             name=description,
                             unit_wt=unit_weight,
                             model=epri_mrd_curve,
                             model_damping = epri_mrd_curve
                         )
                     elif mrd_curve in all_mrd_names:
-                        soil_type = pystrata.site.SoilType.from_published(
+                        soil_type = SoilType.from_published(
                             name=description,
                             unit_wt=unit_weight,
                             model=mrd_curve,
@@ -2301,16 +2323,19 @@ class CreateSiteProfile:
                         )
                     else:
                         raise ValueError(
-                            f"MRD Curve '{mrd_curve_raw}' not recognized after normalization to '{mrd_curve}'."
+                            f"MRD Curve '{mrd_curve_raw}' "
+                            "not recognized after normalization to '{mrd_curve}'."
                         )
-                
+
                 shifted_damping_soil_type = self.shift_damping(soil_type)
-                layers.append(pystrata.site.Layer(shifted_damping_soil_type, thickness, velocity))
+                layers.append(Layer(shifted_damping_soil_type,
+                                    thickness,
+                                    velocity))
 
         layers.append(
-            pystrata.site.Layer(
-                pystrata.site.SoilType(
-                    'Reference Rock',
+            Layer(
+                SoilType(
+                    "Reference Rock",
                     self.reference_rock_unit_weight,
                     None,
                     self.reference_rock_damping
@@ -2320,4 +2345,4 @@ class CreateSiteProfile:
             )
         )
 
-        return pystrata.site.Profile(layers)
+        return Profile(layers)

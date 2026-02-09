@@ -1,21 +1,22 @@
-import pystrata
-import pykooh
 import numpy as np
 import pandas as pd
+import pykooh
 from scipy.stats import linregress
 
+import pystrata
 
-def calculate_kappa(data, 
-                    start_freq, 
+
+def calculate_kappa(data,
+                    start_freq,
                     end_freq,
                     smoothing = False,
                     smoothing_window = 30,
                    normalization = False,
                    normalization_freq = 3):
-                       
+
     if isinstance(data,pystrata.motion.TimeSeriesMotion):
 
-        
+
         fourier_amps = abs(data.fourier_amps)
         freqs = data.freqs
         if smoothing:
@@ -33,12 +34,13 @@ def calculate_kappa(data,
             freqs_masked = freqs[mask]
             log_amps = np.log(fourier_amps[mask])
 
-            slope, intercept, r_value, p_value, std_err = linregress(freqs_masked, log_amps)
+            slope, intercept, r_value, p_value, std_err = linregress(freqs_masked,
+                                                                     log_amps)
 
             kappa = -slope / np.pi
 
             return kappa, freqs_masked, np.exp(slope*freqs_masked+intercept)
-        
+
     elif isinstance(data,pystrata.output.FourierAmplitudeSpectrumOutput):
 
         df = data.to_dataframe()
@@ -46,7 +48,7 @@ def calculate_kappa(data,
         freq_min = start_freq
         freq_max = end_freq
         mask = (freqs >= freq_min) & (freqs <= freq_max)
-        
+
         kappa_df = pd.DataFrame()
         if np.any(mask):
             freqs_masked = freqs[mask]
@@ -59,16 +61,17 @@ def calculate_kappa(data,
                 if normalization:
                     idx = np.argmin(np.abs(freqs - normalization_freq))
                     fourier_amps = fourier_amps/fourier_amps[idx]
-                    
+
                 log_amps = np.log(fourier_amps[mask])
 
-                slope, intercept, r_value, p_value, std_err = linregress(freqs_masked, log_amps)
+                slope, intercept, r_value, p_value, std_err = linregress(freqs_masked,
+                                                                         log_amps)
 
                 kappa = -slope / np.pi
 
                 fitted_line = np.exp(slope*freqs_masked+intercept)
                 fitted_lines_df[col] = fitted_line
-                kappa_df.loc[col,'kappa'] = kappa
+                kappa_df.loc[col,"kappa"] = kappa
 
-            
+
             return kappa_df, fitted_lines_df

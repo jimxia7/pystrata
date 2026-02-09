@@ -20,14 +20,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 import collections
+import pickle
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.integrate
 from matplotlib.colors import LogNorm, TwoSlopeNorm
 from scipy.interpolate import interp1d
-import pickle
-from pathlib import Path
 
 try:
     import pandas as pd
@@ -146,11 +146,11 @@ class OutputCollection(collections.abc.Collection):
 
         pickle_file_path = Path(pickle_file_name)
 
-        if pickle_file_path.suffix.lower() == '.pkl':
+        if pickle_file_path.suffix.lower() == ".pkl":
             with open(pickle_file_name, "wb") as f:
                 pickle.dump(self.outputs, f)
         else:
-            print('output file extension is not .pkl')
+            print("output file extension is not .pkl")
 
         return
 
@@ -274,7 +274,7 @@ class Output:
         df = pd.DataFrame(self.values, index=self.refs, columns=columns)
 
         return df
-    
+
     def to_pickle(self,pickle_file_name):
         if not pickle:
             raise RuntimeError("Install `pickle` library.")
@@ -282,14 +282,14 @@ class Output:
         df = self.to_dataframe()
         pickle_file_path = Path(pickle_file_name)
 
-        if pickle_file_path.suffix.lower() == 'pkl':
+        if pickle_file_path.suffix.lower() == "pkl":
             with open(pickle_file_name, "wb") as f:
                 pickle.dump(df, f)
         else:
-            print('output file extension is not .pkl')
+            print("output file extension is not .pkl")
 
         return
-    
+
 
     @staticmethod
     def _get_xy(refs, values):
@@ -731,9 +731,9 @@ class ProfileBasedOutput(Output):
             _ln_interped = np.array(nans)
 
         return _ln_interped
-    
+
     def _ln_interp_1(self,i,ref):
-        
+
         _ref = self.refs
         # Only select points with valid entries
         mask = np.isfinite(_ref)
@@ -762,27 +762,6 @@ class ProfileBasedOutput(Output):
 
         if ref is None:
             ref = np.linspace(0, np.nanmax(self.refs))
-
-        if isinstance(self.names[0], tuple):
-            columns = pd.MultiIndex.from_tuples(self.names)
-        else:
-            columns = self.names
-
-        # Ignore zeros in the data
-        if self.values.ndim == 1:
-            n = 1
-            values = np.exp(np.array([self._ln_interp_1(i, ref) for i in range(n)])).T
-        else:
-            n = self.values.shape[1]
-            values = np.exp(np.array([self._ln_interp(i, ref) for i in range(n)])).T
-
-        df = pd.DataFrame(values, index=ref, columns=columns)
-
-        return df
-    
-    def to_pickle(self, pickle_out_file):
-        if not pickle:
-            raise RuntimeError("Install `pickle` library.")
 
         if isinstance(self.names[0], tuple):
             columns = pd.MultiIndex.from_tuples(self.names)

@@ -746,7 +746,10 @@ class FrequencyDependentEqlCalculator(EquivalentLinearCalculator):
 
         This step was recommended in Section 8.3.1 of Zalachoris (2014).
         """
-        eql = EquivalentLinearCalculator(strain_ratio=self._strain_ratio, tolerance=self._tolerance, max_iterations=self._max_iterations, strain_limit=self._strain_limit)
+        eql = EquivalentLinearCalculator(strain_ratio=self._strain_ratio,
+                                         tolerance=self._tolerance,
+                                         max_iterations=self._max_iterations,
+                                         strain_limit=self._strain_limit)
         eql(self._motion, self._profile, self._loc_input)
 
     def _calc_strain(self, loc_input, loc_layer, motion, *args):
@@ -759,7 +762,7 @@ class FrequencyDependentEqlCalculator(EquivalentLinearCalculator):
 
         if self._method == "ka02":
             # Equation (8)
-            freq_avg = np.trapz(freqs * strain_fas, x=freqs) / np.trapz(
+            freq_avg = np.trapezoid(freqs * strain_fas, x=freqs) / np.trapezoid(
                 strain_fas, x=freqs
             )
 
@@ -767,7 +770,7 @@ class FrequencyDependentEqlCalculator(EquivalentLinearCalculator):
             # frequency
             # Equation (8)
             mask = freqs < freq_avg
-            strain_avg = np.trapz(strain_fas[mask], x=freqs[mask]) / freq_avg
+            strain_avg = np.trapezoid(strain_fas[mask], x=freqs[mask]) / freq_avg
 
             # Normalize the frequency and strain by the average values
             freqs /= freq_avg
