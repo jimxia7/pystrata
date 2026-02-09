@@ -28,8 +28,6 @@ import numpy as np
 import scipy.integrate
 from matplotlib.colors import LogNorm, TwoSlopeNorm
 from scipy.interpolate import interp1d
-import pickle
-from pathlib import Path
 
 try:
     import pandas as pd
@@ -148,11 +146,11 @@ class OutputCollection(collections.abc.Collection):
 
         pickle_file_path = Path(pickle_file_name)
 
-        if pickle_file_path.suffix.lower() == '.pkl':
+        if pickle_file_path.suffix.lower() == ".pkl":
             with open(pickle_file_name, "wb") as f:
                 pickle.dump(self.outputs, f)
         else:
-            print('output file extension is not .pkl')
+            print("output file extension is not .pkl")
 
         return
 
@@ -276,7 +274,7 @@ class Output:
         df = pd.DataFrame(self.values, index=self.refs, columns=columns)
 
         return df
-    
+
     def to_pickle(self,pickle_file_name):
         if not pickle:
             raise RuntimeError("Install `pickle` library.")
@@ -284,14 +282,14 @@ class Output:
         df = self.to_dataframe()
         pickle_file_path = Path(pickle_file_name)
 
-        if pickle_file_path.suffix.lower() == 'pkl':
+        if pickle_file_path.suffix.lower() == "pkl":
             with open(pickle_file_name, "wb") as f:
                 pickle.dump(df, f)
         else:
-            print('output file extension is not .pkl')
+            print("output file extension is not .pkl")
 
         return
-    
+
 
     @staticmethod
     def _get_xy(refs, values):
@@ -781,7 +779,7 @@ class ProfileBasedOutput(Output):
         df = pd.DataFrame(values, index=ref, columns=columns)
 
         return df
-    
+
 
 class MaxStrainProfile(ProfileBasedOutput):
     xlabel = "Max. Strain (dec)"
