@@ -267,7 +267,6 @@ class TimeSeriesMotion(Motion):
             next(fp)  # 3) "ACCELERATION TIME SERIES IN UNITS OF G"
             header = next(fp)  # 4) "NPTS=   7999, DT=   .0050 SEC,"
 
-
             # Try modern "DT= 0.005" format
             m_dt = re.search(
                 r"DT\s*=\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)",
