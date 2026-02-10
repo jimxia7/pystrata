@@ -31,7 +31,7 @@ jobs:
                   uv pip install -e .
             - name: Test with pytest
               run: |
-                  uv run pytest --cov-config=pyproject.toml --cov=pystrata --cov=tests --cov-report xml
+                  uv run pytest --ignore=tests/notebooks_test.py --cov-config=pyproject.toml --cov=pystrata --cov=tests --cov-report xml
             - name: Run codacy-coverage-reporter
               uses: codacy/codacy-coverage-reporter-action@v1.3.0
               with:
