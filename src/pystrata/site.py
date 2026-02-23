@@ -2359,3 +2359,39 @@ class CreateSiteProfile:
         )
 
         return Profile(layers)
+
+
+def profile_summary(profile):
+    layer_properties = []
+    
+    for layer in profile.layers:
+        if isinstance(layer.soil_type.mod_reduc, NonlinearProperty):
+            if isinstance(layer.soil_type, DarendeliSoilType):
+                modulus = layer.soil_type._create_name()
+            else:
+                modulus = layer.soil_type.mod_reduc.name
+        else:
+            modulus = 'Linear'
+            
+        if isinstance(layer.soil_type.damping, NonlinearProperty):
+            if isinstance(layer.soil_type, DarendeliSoilType):
+                damping = layer.soil_type._create_name()
+            else:
+                damping = layer.soil_type.mod_reduc.name
+        else:
+            damping = layer.soil_type.damping
+
+        layer_properties.append(pd.DataFrame(
+            {
+                'Description': layer.soil_type.name,
+                'Depth to Top (m)': layer.depth,
+                'Thickness (m)': layer.thickness,
+                'Shear Wave Velocity (m/sec)': layer.initial_shear_vel,
+                'Unit Weight (kN/m3)': layer.unit_wt,
+                'Modulus Reduction': modulus,
+                'Damping': damping
+            }, index=[0]))
+            
+    summary = pd.concat(layer_properties, ignore_index=True)
+    
+    return summary
