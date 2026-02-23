@@ -15,7 +15,7 @@ dependencies = [
     "numba",
     "numpy",
     "pykooh",
-    "pyrvt",
+    "pyrvt @git+https://github.com/jimxia7/pyrvt.git",
     "scipy",
     "setuptools",
     "tomli",

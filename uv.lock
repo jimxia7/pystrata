@@ -1814,8 +1814,8 @@ wheels = [
 
 [[package]]
 name = "pyrvt"
-version = "0.8.1"
-source = { registry = "https://pypi.org/simple" }
+version = "0.1.dev447+g85eaa7579"
+source = { git = "https://github.com/jimxia7/pyrvt.git#85eaa75791105c197aeda0276452539410708fc7" }
 dependencies = [
     { name = "numba" },
     { name = "numpy" },
@@ -1824,10 +1824,6 @@ dependencies = [
     { name = "pyexcel-xlsx" },
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "scipy", version = "1.16.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/08/18/b341b6063cbdbdd330a53e71e0c712e4592e586464d8c4ac85d99cb946ec/pyrvt-0.8.1.tar.gz", hash = "sha256:b0b02b153ad7a7dce7f0f7ec17904466de9a15257db4af7b05f220c9383aa2d4", size = 1204299, upload-time = "2025-07-25T17:46:01.914Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/19/08/fc9cb3ac69f954ee64c041b680f45d707537d354d4eb5781d122a53b59df/pyrvt-0.8.1-py3-none-any.whl", hash = "sha256:0d4eec9ec18517ff14ecad8eaa79e1e9950455b0a8883552317ff58e3d540204", size = 51547, upload-time = "2025-07-25T17:46:00.256Z" },
 ]
 
 [[package]]
@@ -1924,7 +1920,7 @@ requires-dist = [
     { name = "pyexcel", marker = "extra == 'test'" },
     { name = "pykooh" },
     { name = "pykooh", marker = "extra == 'test'" },
-    { name = "pyrvt" },
+    { name = "pyrvt", git = "https://github.com/jimxia7/pyrvt.git" },
     { name = "pytest", marker = "extra == 'test'" },
     { name = "pytest-cov", marker = "extra == 'test'" },
     { name = "pytest-runner", marker = "extra == 'test'" },
