@@ -512,13 +512,22 @@ class SourceTheoryRvtMotion(pyrvt.motions.SourceTheoryMotion, Motion):
 
     def __init__(
         self,
-        magnitude,
-        distance,
-        region,
-        stress_drop=None,
-        depth=8,
-        peak_calculator=None,
+        magnitude: float,
+        distance: float,
+        region: str,
+        stress_drop: float | None = None,
+        depth: float | None = 8,
+        shear_velocity: float | None = 3.5,
+        path_atten_coeff: float | None = 180,
+        path_atten_power: float | None = 0.45,
+        density=2.8,
+        site_atten=0.04,
+        geometric_spreading = 1.0,
+        site_amp = 1.0,
+        peak_calculator = None,
         calc_kwds=None,
+        freqs=None,
+        disable_site_amp=False
     ):
         Motion.__init__(self)
         pyrvt.motions.SourceTheoryMotion.__init__(
@@ -528,6 +537,15 @@ class SourceTheoryRvtMotion(pyrvt.motions.SourceTheoryMotion, Motion):
             region,
             stress_drop,
             depth,
+            shear_velocity,
+            path_atten_coeff,
+            path_atten_power,
+            density,
+            site_atten,
+            geometric_spreading,
+            site_amp,
             peak_calculator=peak_calculator,
             calc_kwds=calc_kwds,
+            freqs=freqs,
+            disable_site_amp=disable_site_amp
         )
