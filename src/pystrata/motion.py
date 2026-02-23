@@ -522,12 +522,12 @@ class SourceTheoryRvtMotion(pyrvt.motions.SourceTheoryMotion, Motion):
         path_atten_power: float | None = 0.45,
         density=2.8,
         site_atten=0.04,
-        geometric_spreading = 1.0,
-        site_amp = 1.0,
-        peak_calculator = None,
+        geometric_spreading=1.0,
+        site_amp=1.0,
+        peak_calculator=None,
         calc_kwds=None,
         freqs=None,
-        disable_site_amp=False
+        disable_site_amp=False,
     ):
         Motion.__init__(self)
         pyrvt.motions.SourceTheoryMotion.__init__(
@@ -547,5 +547,5 @@ class SourceTheoryRvtMotion(pyrvt.motions.SourceTheoryMotion, Motion):
             peak_calculator=peak_calculator,
             calc_kwds=calc_kwds,
             freqs=freqs,
-            disable_site_amp=disable_site_amp
+            disable_site_amp=disable_site_amp,
         )
