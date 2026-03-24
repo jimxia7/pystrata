@@ -30,7 +30,7 @@ import pyrvt
 
 # Gravity in m/sec²
 from scipy.constants import g as GRAVITY
-
+from scipy.interpolate import interp1d
 
 class WaveField(enum.Enum):
     outcrop = 0
@@ -525,7 +525,7 @@ class SourceTheoryRvtMotion(pyrvt.motions.SourceTheoryMotion, Motion):
         density: float | None = 2.8,
         site_atten: float | None = 0.04,
         geometric_spreading: list[tuple[float, float | None]] | None = None,
-        site_amp: float | None = None,
+        site_amp: interp1d | None = None,
         peak_calculator: str | pyrvt.peak_calculators.Calculator | None = None,
         calc_kwds: dict | None = None,
         freqs: np.ndarray | None = None,
