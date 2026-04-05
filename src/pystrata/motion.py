@@ -517,19 +517,12 @@ class SourceTheoryRvtMotion(pyrvt.motions.SourceTheoryMotion, Motion):
         magnitude: float,
         distance: float,
         region: str | None = None,
-        stress_drop: float | None = None,
         depth: float | None = 8,
-        shear_velocity: float | None = 3.5,
-        path_atten_coeff: float | None = 180,
-        path_atten_power: float | None = 0.45,
-        density: float | None = 2.8,
-        site_atten: float | None = 0.04,
-        geometric_spreading: list[tuple[float, float | None]] | None = None,
-        site_amp: interp1d | None = None,
         peak_calculator: str | pyrvt.peak_calculators.Calculator | None = None,
         calc_kwds: dict | None = None,
         freqs: np.ndarray | None = None,
         disable_site_amp: bool = False,
+        **kwargs
     ):
         Motion.__init__(self)
         pyrvt.motions.SourceTheoryMotion.__init__(
@@ -537,17 +530,10 @@ class SourceTheoryRvtMotion(pyrvt.motions.SourceTheoryMotion, Motion):
             magnitude=magnitude,
             distance=distance,
             region=region,
-            stress_drop=stress_drop,
             depth=depth,
-            shear_velocity=shear_velocity,
-            path_atten_coeff=path_atten_coeff,
-            path_atten_power=path_atten_power,
-            density=density,
-            site_atten=site_atten,
-            geometric_spreading=geometric_spreading,
-            site_amp=site_amp,
             peak_calculator=peak_calculator,
             calc_kwds=calc_kwds,
             freqs=freqs,
             disable_site_amp=disable_site_amp,
+            **kwargs
         )
