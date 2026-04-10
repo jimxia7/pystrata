@@ -1830,6 +1830,7 @@ dependencies = [
 name = "pystrata"
 source = { editable = "." }
 dependencies = [
+    { name = "ipykernel" },
     { name = "matplotlib" },
     { name = "numba" },
     { name = "numpy" },
@@ -1878,6 +1879,7 @@ test = [
 dev = [
     { name = "black", extra = ["colorama", "jupyter"] },
     { name = "coverage", extra = ["toml"] },
+    { name = "ipykernel" },
     { name = "nbconvert" },
     { name = "nbformat" },
     { name = "openpyxl" },
@@ -1905,6 +1907,7 @@ requires-dist = [
     { name = "black", extras = ["colorama", "jupyter"], marker = "extra == 'style'" },
     { name = "coverage", extras = ["toml"], marker = "extra == 'test'" },
     { name = "furo", marker = "extra == 'docs'" },
+    { name = "ipykernel" },
     { name = "matplotlib" },
     { name = "matplotlib", marker = "extra == 'docs'" },
     { name = "matplotlib", marker = "extra == 'test'" },
@@ -1941,6 +1944,7 @@ provides-extras = ["test", "style", "docs"]
 dev = [
     { name = "black", extras = ["colorama", "jupyter"] },
     { name = "coverage", extras = ["toml"] },
+    { name = "ipykernel" },
     { name = "nbconvert" },
     { name = "nbformat" },
     { name = "openpyxl" },

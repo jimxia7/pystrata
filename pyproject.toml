@@ -11,6 +11,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 dependencies = [
+    "ipykernel",
     "matplotlib",
     "numba",
     "numpy",
@@ -114,6 +115,7 @@ dev = [
     "coverage[toml]",
     "nbformat",
     "nbconvert",
+    "ipykernel",
     # Code quality
     "black[colorama,jupyter]",
     "ruff",
