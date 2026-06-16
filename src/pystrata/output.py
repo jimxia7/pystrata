@@ -681,7 +681,7 @@ class ProfileBasedOutput(Output):
 
         _ref = self.refs[:, i] if self.refs.ndim > 1 else self.refs
         # Only select points with valid entries
-        mask = np.isfinite(_ref)
+        mask = np.isfinite(_ref) & (_ref != 0)
         _ref = _ref[mask]
         _ln_values = np.log(
             self.values[mask, i] if self.values.ndim > 1 else self.values[mask]
