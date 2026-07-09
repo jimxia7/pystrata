@@ -2152,69 +2152,45 @@ class Profile(collections.abc.Container):
 
     def auto_discretize(
         self,
-        max_freq: float = 50.0,
-        wave_frac: float = 0.2,
+        max_freq: npt.ArrayLike = 50.0,
+        wave_frac: npt.ArrayLike = 0.2,
         nonlinear_only: bool = True,
     ) -> Profile:
         """Subdivide the layers to capture strain variation.
 
         Parameters
         ----------
-        max_freq: float
-            Maximum frequency of interest [Hz].
-        wave_frac: float
-            Fraction of wavelength required. Typically 1/3 to 1/5.
-
-        max_thick: float *optional*
-            If provided, layers are limited to be at most that thick. This is applied to
-            all layers regardless of nonlinearity.
+        max_freq: array_like
+            Maximum frequency of interest [Hz]. A scalar is applied to all
+            layers; an array provides a value for each layer, excluding the
+            halfspace.
+        wave_frac: array_like
+            Fraction of wavelength required. Typically 1/3 to 1/5. A scalar is
+            applied to all layers; an array provides a value for each layer,
+            excluding the halfspace.
+        nonlinear_only: bool
+            Only subdivide layers with nonlinear soil types.
 
         Returns
         -------
         profile: Profile
             A new profile with modified layer thicknesses
         """
-        layers = []
-        for layer in self[:-1]:
-            if not nonlinear_only or layer.soil_type.is_nonlinear:
-                opt_thickness = layer.shear_vel / max_freq * wave_frac
-                count = max(np.ceil(layer.thickness / opt_thickness).astype(int), 1)
-                thickness = layer.thickness / count
-                for _ in range(count):
-                    layers.append(
-                        Layer(
-                            layer.soil_type,
-                            thickness,
-                            layer.shear_vel,
-                            layer.damping_min,
-                        )
-                    )
-            else:
-                layers.append(layer)
-        # Add the halfspace
-        layers.append(self[-1])
-
-        return Profile(layers, wt_depth=self.wt_depth)
-    
-    def depth_dependent_discretize(
-        self,
-        max_freq: npt.ArrayLike,
-        wave_frac: npt.ArrayLike,
-        nonlinear_only: bool = True,
-    ):
-        
+        n_layers = len(self) - 1
         max_freq = np.asarray(max_freq, dtype=float)
         wave_frac = np.asarray(wave_frac, dtype=float)
-        n_layers = len(self) - 1
-
-        if len(max_freq) != n_layers or len(wave_frac) != n_layers:
+        try:
+            max_freq = np.broadcast_to(max_freq, n_layers)
+            wave_frac = np.broadcast_to(wave_frac, n_layers)
+        except ValueError as err:
             raise ValueError(
-                f"max_freq (len {len(max_freq)}) and wave_frac (len {len(wave_frac)}) "
-                f"must match the number of layers ({n_layers})"
-            )
+                f"max_freq (shape {max_freq.shape}) and wave_frac "
+                f"(shape {wave_frac.shape}) must match the number of "
+                f"layers ({n_layers})"
+            ) from err
 
         layers = []
-        for i,layer in enumerate(self[:-1]):
+        for i, layer in enumerate(self[:-1]):
             if not nonlinear_only or layer.soil_type.is_nonlinear:
                 opt_thickness = layer.shear_vel / max_freq[i] * wave_frac[i]
                 count = max(np.ceil(layer.thickness / opt_thickness).astype(int), 1)
@@ -2230,12 +2206,11 @@ class Profile(collections.abc.Container):
                     )
             else:
                 layers.append(layer)
-                
+
         # Add the halfspace
         layers.append(self[-1])
 
         return Profile(layers, wt_depth=self.wt_depth)
-        
 
     def pore_pressure(self, depth):
         """Pore pressure at a given depth in [kN//m²].
