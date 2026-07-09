@@ -2195,6 +2195,47 @@ class Profile(collections.abc.Container):
         layers.append(self[-1])
 
         return Profile(layers, wt_depth=self.wt_depth)
+    
+    def depth_dependent_discretize(
+        self,
+        max_freq: npt.ArrayLike,
+        wave_frac: npt.ArrayLike,
+        nonlinear_only: bool = True,
+    ):
+        
+        max_freq = np.asarray(max_freq, dtype=float)
+        wave_frac = np.asarray(wave_frac, dtype=float)
+        n_layers = len(self) - 1
+
+        if len(max_freq) != n_layers or len(wave_frac) != n_layers:
+            raise ValueError(
+                f"max_freq (len {len(max_freq)}) and wave_frac (len {len(wave_frac)}) "
+                f"must match the number of layers ({n_layers})"
+            )
+
+        layers = []
+        for i,layer in enumerate(self[:-1]):
+            if not nonlinear_only or layer.soil_type.is_nonlinear:
+                opt_thickness = layer.shear_vel / max_freq[i] * wave_frac[i]
+                count = max(np.ceil(layer.thickness / opt_thickness).astype(int), 1)
+                thickness = layer.thickness / count
+                for _ in range(count):
+                    layers.append(
+                        Layer(
+                            layer.soil_type,
+                            thickness,
+                            layer.shear_vel,
+                            layer.damping_min,
+                        )
+                    )
+            else:
+                layers.append(layer)
+                
+        # Add the halfspace
+        layers.append(self[-1])
+
+        return Profile(layers, wt_depth=self.wt_depth)
+        
 
     def pore_pressure(self, depth):
         """Pore pressure at a given depth in [kN//m²].
