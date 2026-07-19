@@ -602,6 +602,15 @@ class DarendeliSoilType(ModifiedHyperbolicSoilType):
         fmt = "Darendeli (PI={:.0f}, OCR={:.1f}, σₘ'={:.1f} kN/m²)"
         return fmt.format(self._plas_index, self._ocr, self._stress_mean)
 
+    @property
+    def damping_min(self) -> float:
+        """Return the small-strain damping."""
+
+        if damping_min == None:
+            return self._calc_damping_min
+        else:
+            return damping_min
+
 
 class MenqSoilType(ModifiedHyperbolicSoilType):
     """Menq SoilType for gravelly soils.
