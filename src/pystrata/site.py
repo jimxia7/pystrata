@@ -568,7 +568,7 @@ class DarendeliSoilType(ModifiedHyperbolicSoilType):
         if damping_min is None:
             self._damping_min = self._calc_damping_min()
         else:
-            self_damping_min = damping_min
+            self._damping_min = damping_min
 
         if not name:
             name = self._create_name()
