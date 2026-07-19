@@ -605,11 +605,7 @@ class DarendeliSoilType(ModifiedHyperbolicSoilType):
     @property
     def damping_min(self) -> float:
         """Return the small-strain damping."""
-
-        if damping_min == None:
-            return self._calc_damping_min
-        else:
-            return damping_min
+        return damping_min
 
 
 class MenqSoilType(ModifiedHyperbolicSoilType):
