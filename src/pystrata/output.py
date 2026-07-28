@@ -412,7 +412,7 @@ class AriasIntensityTSOutput(AccelerationTSOutput):
 
 class StrainTSOutput(TimeSeriesOutput):
     def __init__(self, location, in_percent=False):
-        super().__init__(location)
+        super().__init__(location)  
         self._in_percent = in_percent
         assert self.location.wave_field == WaveField.within
 
@@ -501,6 +501,21 @@ class FourierAmplitudeSpectrumOutput(LocationBasedOutput):
             )
 
         self._add_values(fas)
+
+class KappaOutput(FourierAmplitudeSpectrumOutput):
+
+    ylabel = "Kappa"
+
+    def __init__(self, freqs, freq_range, location, ko_bandwidth=None):
+        super().__init__(freqs, location, ko_bandwidth=None)
+        self._ko_bandwidth = ko_bandwidth
+
+    def __call__(self, calc, name=None):
+        FourierAmplitudeSpectrumOutput.__call__(self, calc, name)
+
+        kappa = np.polyfit(self.freqs,self._values,1)
+
+        self._add_values(kappa)
 
 
 class ResponseSpectrumOutput(LocationBasedOutput):
