@@ -353,7 +353,7 @@ class LocationBasedOutput(Output):
         """Locate location within the profile."""
         return self._location(calc.profile)
 
-
+    
 class TimeSeriesOutput(LocationBasedOutput):
     xlabel = "Time (sec)"
     xscale = "linear"
@@ -500,22 +500,54 @@ class FourierAmplitudeSpectrumOutput(LocationBasedOutput):
                 self.ko_bandwidth,
             )
 
-        self._add_values(fas)
+        values = self._modify_values(fas)
+
+        self._add_values(values)
+
+    def _modify_values(self, values):
+        return values
 
 class KappaOutput(FourierAmplitudeSpectrumOutput):
 
     ylabel = "Kappa"
 
-    def __init__(self, freqs, freq_range, location, ko_bandwidth=None):
-        super().__init__(freqs, location, ko_bandwidth=None)
-        self._ko_bandwidth = ko_bandwidth
+    def __init__(self, freqs_range, location, ko_bandwidth=None):
+        super().__init__(np.array(['Kappa']), location, ko_bandwidth)
+        self._freqs_range = freqs_range
 
-    def __call__(self, calc, name=None):
-        FourierAmplitudeSpectrumOutput.__call__(self, calc, name)
+    @property
+    def freqs(self):
+        return self._freqs_range
 
-        kappa = np.polyfit(self.freqs,self._values,1)
 
-        self._add_values(kappa)
+    def _modify_values(self, values):
+
+        kappa = -np.polyfit(self.freqs,np.log(values),1)[0]/np.pi
+        kappa = np.array([kappa])
+
+        return kappa
+
+class KappaFittedLineOutput(FourierAmplitudeSpectrumOutput):
+
+    ylabel = "Kappa"
+
+    def __init__(self, freqs_range, location, ko_bandwidth=None):
+        super().__init__(freqs_range, location, ko_bandwidth)
+        self._freqs_range = freqs_range
+
+    @property
+    def freqs(self):
+        return self._freqs_range
+
+
+    def _modify_values(self, values):
+
+        coeffs = np.polyfit(self.freqs,np.log(values),1)
+        slope, intercept = coeffs
+
+        Kappa_Fitted_Line = np.exp(slope*self.freqs+intercept)
+
+        return Kappa_Fitted_Line
 
 
 class ResponseSpectrumOutput(LocationBasedOutput):

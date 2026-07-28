@@ -28,6 +28,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import scipy.constants as C
+import pykooh
 
 from . import motion, propagation, site
 
@@ -533,3 +534,35 @@ def calc_mean_eff_stress(
     stress_mean = stress_vert_eff * (1 + 2 * k0) / 3
 
     return stress_mean
+
+def _compute_fourier_spectrum(time_step,
+                              accels,
+                              freqs = None,
+                              fa_length=None, 
+                              ko_bandwidth = None):
+    """Compute the Fourier Amplitude Spectrum of the time series."""
+
+    if fa_length is None:
+        # Use the next power of 2 for the length
+        n = 1
+        while n < accels.size:
+            n <<= 1
+    else:
+        n = fa_length
+    
+    fft_freqs = np.fft.rfftfreq(n, d = time_step)
+
+    if freqs is None:
+        freqs = fft_freqs
+
+    if ko_bandwidth is None:
+        FAS = np.interp(freqs, 
+                        fft_freqs, 
+                        np.fft.rfft(accels, n))
+    else:
+        FAS = pykooh.smooth(freqs, 
+                            fft_freqs, 
+                            np.fft.rfft(accels, n),
+                            ko_bandwidth)
+
+    return freqs, FAS
