@@ -549,6 +549,33 @@ class KappaFittedLineOutput(FourierAmplitudeSpectrumOutput):
 
         return Kappa_Fitted_Line
 
+class KappaCorrectFourierAmplitudeSpectrumOutput(FourierAmplitudeSpectrumOutput):
+
+    def __init__(self, freqs, freqs_range_for_kappa,kappa_target, location, ko_bandwidth=None):
+        super().__init__(freqs, location, ko_bandwidth)
+        self._freqs_range = freqs_range_for_kappa
+        self._kappa_target = kappa_target
+        self._ko_bandwidth = ko_bandwidth
+
+    @property
+    def freqs_range(self):
+        return self._freqs_range
+
+    @property
+    def kappa_target(self):
+        return self._kappa_target
+    
+    def _modify_values(self, values):
+
+        values_for_kappa = np.interp(self.freqs_range,self.freqs,values)
+
+        kappa = -np.polyfit(self.freqs_range,np.log(values_for_kappa),1)[0]/np.pi
+
+        delta_kappa = self.kappa_target - kappa
+        kappa_corrected_values = np.exp(-np.pi*delta_kappa*self.freqs)*values
+        
+        return kappa_corrected_values
+
 
 class ResponseSpectrumOutput(LocationBasedOutput):
     _const_ref = True
@@ -556,7 +583,7 @@ class ResponseSpectrumOutput(LocationBasedOutput):
 
     ref_name = "freq"
 
-    def __init__(self, freqs, location, osc_damping):
+    def __init__(self, freqs, location, osc_damping = 0.05):
         super().__init__(freqs, location)
         self._osc_damping = osc_damping
 
@@ -580,9 +607,47 @@ class ResponseSpectrumOutput(LocationBasedOutput):
         Output.__call__(self, calc, name)
         loc = self._get_location(calc)
         tf = calc.calc_accel_tf(calc.loc_input, loc)
+        tf = self._modify_tf(calc,tf)
         ars = calc.motion.calc_osc_accels(self.freqs, self.osc_damping, tf)
         self._add_values(ars)
 
+    def _modify_tf(self,calc,values):
+        return values
+
+class KappaCorrectedResponseSpectrumOutput(ResponseSpectrumOutput):
+
+    def __init__(self, freqs, freqs_range_for_kappa, kappa_target, location, osc_damping = 0.05,ko_bandwidth = None):
+        super().__init__(freqs, location, osc_damping)
+        self._freqs_range = freqs_range_for_kappa
+        self._kappa_target = kappa_target
+        self._ko_bandwidth = ko_bandwidth
+
+    @property
+    def freqs_range(self):
+        return self._freqs_range
+
+    @property
+    def kappa_target(self):
+        return self._kappa_target
+
+    @property
+    def ko_bandwidth(self):
+        return self._ko_bandwidth
+
+    def _modify_tf(self,calc,values):
+
+        values_for_kappa = np.interp(self.freqs_range,self.freqs,values)
+
+        fas = np.abs(values_for_kappa*
+                     calc.motion._calc_fourier_spectrum(freqs = self.freqs_range,
+                                                        ko_bandwidth = self.ko_bandwidth))
+        
+        kappa = -np.polyfit(self.freqs_range,np.log(fas),1)[0]/np.pi
+
+        delta_kappa = self.kappa_target - kappa
+        kappa_corrected_values = np.exp(-np.pi*delta_kappa*self.freqs)*values
+        
+        return kappa_corrected_values
 
 class RatioBasedOutput(Output):
     _const_ref = True
@@ -615,7 +680,12 @@ class AccelTransferFunctionOutput(RatioBasedOutput):
     ref_name = "freq"
 
     def __init__(
-        self, refs, location_in, location_out, ko_bandwidth=None, absolute=True
+        self, 
+        refs, 
+        location_in, 
+        location_out, 
+        ko_bandwidth=None, 
+        absolute=True
     ):
         super().__init__(refs, location_in, location_out)
         self._ko_bandwidth = ko_bandwidth
@@ -636,11 +706,16 @@ class AccelTransferFunctionOutput(RatioBasedOutput):
         else:
             tf = pykooh.smooth(self.freqs, calc.motion.freqs, tf, self._ko_bandwidth)
 
-        self._add_values(tf)
+        values = self._modify_values(tf)
+
+        self._add_values(values)
 
     @property
     def freqs(self):
         return self._refs
+
+    def _modify_values(self,values):
+        return values
 
 
 class ResponseSpectrumRatioOutput(RatioBasedOutput):

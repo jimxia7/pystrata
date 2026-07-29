@@ -127,7 +127,7 @@ class TimeSeriesMotion(Motion):
     """Time-series motion for time series based site response analysis."""
 
     def __init__(
-        self, filename: str, description: str, time_step: float, accels, fa_length=None
+        self, filename: str, description: str, time_step: float, accels
     ):
         """Initialize the class from specified acceleration values.
 
@@ -156,7 +156,6 @@ class TimeSeriesMotion(Motion):
         self._accels = np.asarray(accels)
         self._kappa = None
 
-        self._calc_fourier_spectrum(fa_length)
 
     @property
     def accels(self):
