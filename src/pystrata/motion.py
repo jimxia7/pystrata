@@ -28,14 +28,44 @@ import numpy as np
 import pyrvt
 import pykooh
 
-from .tools import _compute_fourier_spectrum
-
 # Gravity in m/sec²
 from scipy.constants import g as GRAVITY
 
 _trapezoid = np.trapezoid
 
 DEFAULT_KAPPA_FREQS = np.logspace(np.log10(10), np.log10(30), 100)
+
+def _compute_fourier_spectrum(time_step,
+                              accels,
+                              freqs = None,
+                              fa_length=None, 
+                              ko_bandwidth = None):
+    """Compute the Fourier Amplitude Spectrum of the time series."""
+
+    if fa_length is None:
+        # Use the next power of 2 for the length
+        n = 1
+        while n < accels.size:
+            n <<= 1
+    else:
+        n = fa_length
+    
+    fft_freqs = np.fft.rfftfreq(n, d = time_step)
+
+    if freqs is None:
+        freqs = fft_freqs
+
+    if ko_bandwidth is None:
+        FAS = np.interp(freqs, 
+                        fft_freqs, 
+                        np.fft.rfft(accels, n))
+    else:
+        FAS = pykooh.smooth(freqs, 
+                            fft_freqs, 
+                            np.fft.rfft(accels, n),
+                            ko_bandwidth)
+
+    return freqs, FAS
 
 class WaveField(enum.Enum):
     outcrop = 0
@@ -124,6 +154,7 @@ class TimeSeriesMotion(Motion):
         self._description = description
         self._time_step = time_step
         self._accels = np.asarray(accels)
+        self._kappa = None
 
         self._calc_fourier_spectrum(fa_length)
 
@@ -239,8 +270,8 @@ class TimeSeriesMotion(Motion):
         """Compute the Fourier Amplitude Spectrum of the time series."""
 
         self._freqs, self._fourier_amps = _compute_fourier_spectrum(
-            self._accels,
             self.time_step,
+            self._accels,
             freqs = freqs,
             fa_length= fa_length,
             ko_bandwidth= ko_bandwidth
@@ -248,7 +279,7 @@ class TimeSeriesMotion(Motion):
 
     @property
     def kappa(self):
-        
+    
         if self._kappa is None:
             self._calc_kappa()
             
@@ -259,7 +290,7 @@ class TimeSeriesMotion(Motion):
                     fa_length=None, 
                     ko_bandwidth = None):
         
-        fas = _compute_fourier_spectrum(
+        _,fas = _compute_fourier_spectrum(
             self.time_step,
             self.accels,
             freqs = freqs_range,
@@ -267,7 +298,7 @@ class TimeSeriesMotion(Motion):
             ko_bandwidth=ko_bandwidth
         )
 
-        self._kappa = -np.polyfit(freqs_range, np.log(fas),1)[0]/np.pi
+        self._kappa = -np.polyfit(freqs_range, np.log(abs(fas)),1)[0]/np.pi
         
     def _calc_sdof_tf(self, osc_freq, damping=0.05):
         """Compute the transfer function for a single-degree-of-freedom oscillator.
