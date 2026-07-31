@@ -77,7 +77,7 @@ class Motion:
     def __init__(self, freqs=None):
         object.__init__(self)
 
-        self._freqs = np.array([] if freqs is None else freqs)
+        self._freqs = None if freqs is None else np.array(freqs)
         self._pga = None
         self._pgv = None
         self._arias_intensity = None
@@ -155,7 +155,7 @@ class TimeSeriesMotion(Motion):
         self._time_step = time_step
         self._accels = np.asarray(accels)
         self._kappa = None
-
+        self._fourier_amps = None
 
     @property
     def accels(self):
@@ -188,7 +188,6 @@ class TimeSeriesMotion(Motion):
 
     @property
     def fourier_amps(self):
-        
         """Return the frequencies."""
         if self._fourier_amps is None:
             self._calc_fourier_spectrum()
@@ -264,7 +263,7 @@ class TimeSeriesMotion(Motion):
 
     def _calc_fourier_spectrum(self, 
                                freqs = None, 
-                               fa_length=None, 
+                               fa_length = None, 
                                ko_bandwidth = None):
         """Compute the Fourier Amplitude Spectrum of the time series."""
 

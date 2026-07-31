@@ -34,7 +34,7 @@ except ImportError:
 
 import pykooh
 
-from .motion import GRAVITY, TimeSeriesMotion, WaveField
+from .motion import GRAVITY, TimeSeriesMotion, WaveField, _compute_fourier_spectrum
 
 
 def plot_amplification_evolv(
@@ -207,9 +207,19 @@ class Output:
     def names(self):
         return self._names
 
-    def reset(self):
+    def reset_all(self):
         self._values = None
         self._names = []
+        if not self._const_ref:
+            self._refs = np.array([])
+
+    def reset_values(self):
+        self._values = None
+    
+    def reset_name(self):
+        self._names = []
+
+    def reset_refs(self):
         if not self._const_ref:
             self._refs = np.array([])
 
@@ -310,7 +320,6 @@ class Output:
             ax.legend()
 
         return ax
-
 
 class OutputLocation:
     def __init__(self, wave_field, depth=None, index=None):
@@ -507,6 +516,20 @@ class FourierAmplitudeSpectrumOutput(LocationBasedOutput):
     def _modify_values(self, values):
         return values
 
+    def kappa_correction(self,freqs_range_for_kappa,kappa_target,name = None):
+        values = self.values if self.values.ndim == 1 else self.values[:, -1]
+        values_for_kappa = np.interp(freqs_range_for_kappa, self.freqs, values)
+
+        kappa = -np.polyfit(freqs_range_for_kappa,np.log(values_for_kappa),1)[0]/np.pi
+
+        delta_kappa = kappa_target - kappa
+        kappa_corrected_values = np.exp(-np.pi*delta_kappa*self.freqs)*self.values
+
+        self.reset_values()
+
+        self._add_values(kappa_corrected_values)
+        self._names.append(name)
+
 class KappaOutput(FourierAmplitudeSpectrumOutput):
 
     ylabel = "Kappa"
@@ -638,15 +661,18 @@ class KappaCorrectedResponseSpectrumOutput(ResponseSpectrumOutput):
 
         values_for_kappa = np.interp(self.freqs_range,self.freqs,values)
 
-        fas = np.abs(values_for_kappa*
-                     calc.motion._calc_fourier_spectrum(freqs = self.freqs_range,
-                                                        ko_bandwidth = self.ko_bandwidth))
-        
+        _, fas = _compute_fourier_spectrum(
+            calc.motion.time_step,
+            calc.motion._accels,
+            freqs=self.freqs_range,
+            ko_bandwidth=self.ko_bandwidth)
+        fas = np.abs(values_for_kappa * fas)
+
         kappa = -np.polyfit(self.freqs_range,np.log(fas),1)[0]/np.pi
 
         delta_kappa = self.kappa_target - kappa
         kappa_corrected_values = np.exp(-np.pi*delta_kappa*self.freqs)*values
-        
+
         return kappa_corrected_values
 
 class RatioBasedOutput(Output):
@@ -753,15 +779,18 @@ class KappaCorrectedAccelTransferFunctionOutput(AccelTransferFunctionOutput):
 
         values_for_kappa = np.interp(self.freqs_range,self.freqs,values)
 
-        fas = np.abs(values_for_kappa*
-                     calc.motion._calc_fourier_spectrum(freqs = self.freqs_range,
-                                                        ko_bandwidth = self.ko_bandwidth))
-        
+        _, fas = _compute_fourier_spectrum(
+            calc.motion.time_step,
+            calc.motion._accels,
+            freqs=self.freqs_range,
+            ko_bandwidth=self.ko_bandwidth)
+        fas = np.abs(values_for_kappa * fas)
+
         kappa = -np.polyfit(self.freqs_range,np.log(fas),1)[0]/np.pi
 
         delta_kappa = self.kappa_target - kappa
         kappa_corrected_values = np.exp(-np.pi*delta_kappa*self.freqs)*values
-        
+
         return kappa_corrected_values
 
 
@@ -834,17 +863,20 @@ class KappaCorrectedResponseSpectrumRatioOutput(ResponseSpectrumRatioOutput):
 
         values_for_kappa = np.interp(self.freqs_range,self.freqs,values)
 
-        fas = np.abs(values_for_kappa*
-                     calc.motion._calc_fourier_spectrum(freqs = self.freqs_range,
-                                                        ko_bandwidth = self.ko_bandwidth))
-        
+        _, fas = _compute_fourier_spectrum(
+            calc.motion.time_step,
+            calc.motion._accels,
+            freqs=self.freqs_range,
+            ko_bandwidth=self.ko_bandwidth)
+        fas = np.abs(values_for_kappa * fas)
+
         kappa = -np.polyfit(self.freqs_range,np.log(fas),1)[0]/np.pi
 
         delta_kappa = self.kappa_target - kappa
         kappa_corrected_values = np.exp(-np.pi*delta_kappa*self.freqs)*values
-        
+
         return kappa_corrected_values
-    
+
 
 class ProfileBasedOutput(Output):
     ylabel = "Depth (m)"
