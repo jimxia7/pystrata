@@ -516,19 +516,19 @@ class FourierAmplitudeSpectrumOutput(LocationBasedOutput):
     def _modify_values(self, values):
         return values
 
-    def kappa_correction(self,freqs_range_for_kappa,kappa_target,name = None):
-        values = self.values if self.values.ndim == 1 else self.values[:, -1]
-        values_for_kappa = np.interp(freqs_range_for_kappa, self.freqs, values)
+    # def kappa_correction(self,freqs_range_for_kappa,kappa_target,name = None):
+    #     values = self.values if self.values.ndim == 1 else self.values[:, -1]
+    #     values_for_kappa = np.interp(freqs_range_for_kappa, self.freqs, values)
 
-        kappa = -np.polyfit(freqs_range_for_kappa,np.log(values_for_kappa),1)[0]/np.pi
+    #     kappa = -np.polyfit(freqs_range_for_kappa,np.log(values_for_kappa),1)[0]/np.pi
 
-        delta_kappa = kappa_target - kappa
-        kappa_corrected_values = np.exp(-np.pi*delta_kappa*self.freqs)*self.values
+    #     delta_kappa = kappa_target - kappa
+    #     kappa_corrected_values = np.exp(-np.pi*delta_kappa*self.freqs)*self.values
 
-        self.reset_values()
+    #     self.reset_values()
 
-        self._add_values(kappa_corrected_values)
-        self._names.append(name)
+    #     self._add_values(kappa_corrected_values)
+    #     self._names.append(name)
 
 class KappaOutput(FourierAmplitudeSpectrumOutput):
 
