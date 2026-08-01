@@ -594,7 +594,7 @@ class KappaCorrectFourierAmplitudeSpectrumOutput(FourierAmplitudeSpectrumOutput)
 
         kappa = -np.polyfit(self.freqs_range,np.log(values_for_kappa),1)[0]/np.pi
 
-        delta_kappa = self.kappa_target - kappa
+        delta_kappa = kappa - self.kappa_target
         kappa_corrected_values = np.exp(-np.pi*delta_kappa*self.freqs)*values
         
         return kappa_corrected_values
