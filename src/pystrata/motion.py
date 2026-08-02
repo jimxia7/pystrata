@@ -30,7 +30,7 @@ import pykooh
 
 # Gravity in m/sec²
 from scipy.constants import g as GRAVITY
-from .kappa import DEFAULT_KAPPA_FREQS, _compute_fourier_spectrum
+# from .kappa import DEFAULT_KAPPA_FREQS, _compute_fourier_spectrum
 
 _trapezoid = np.trapezoid
 
