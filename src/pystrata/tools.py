@@ -28,6 +28,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import scipy.constants as C
+import pykooh
 
 from . import motion, propagation, site
 
