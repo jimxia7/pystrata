@@ -34,6 +34,40 @@ from scipy.constants import g as GRAVITY
 # from .kappa import DEFAULT_KAPPA_FREQS, _compute_fourier_spectrum
 
 _trapezoid = np.trapezoid
+DEFAULT_KAPPA_FREQS = np.logspace(np.log10(10), np.log10(30), 100)
+
+def _compute_fourier_spectrum(time_step,
+                              accels,
+                              freqs = None,
+                              fa_length=None, 
+                              ko_bandwidth = None):
+    """Compute the Fourier Amplitude Spectrum of the time series."""
+
+    if fa_length is None:
+        # Use the next power of 2 for the length
+        n = 1
+        while n < accels.size:
+            n <<= 1
+    else:
+        n = fa_length
+    
+    fft_freqs = np.fft.rfftfreq(n, d = time_step)
+
+    if freqs is None:
+        freqs = fft_freqs
+
+    if ko_bandwidth is None:
+        FAS = np.interp(freqs, 
+                        fft_freqs, 
+                        np.fft.rfft(accels, n))
+    else:
+        FAS = pykooh.smooth(freqs, 
+                            fft_freqs, 
+                            np.fft.rfft(accels, n),
+                            ko_bandwidth)
+
+    return freqs, FAS
+
 
 # Integers and floats, including values without a leading digit (e.g., ".0100")
 # and Fortran style exponents (e.g., "1.0D-2").
