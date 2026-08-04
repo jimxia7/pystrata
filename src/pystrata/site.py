@@ -573,7 +573,7 @@ class DarendeliSoilType(ModifiedHyperbolicSoilType):
         if not name:
             name = self._create_name()
 
-        super().__init__(name, unit_wt, self.damping_min, strains)
+        super().__init__(name, unit_wt, self._damping_min, strains)
 
     def _calc_damping_min(self):
         """Minimum damping [decimal]"""
