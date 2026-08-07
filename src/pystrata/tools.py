@@ -30,7 +30,7 @@ import pandas as pd
 import scipy.constants as C
 import pykooh
 
-from . import motion, propagation, site
+from . import motion, propagation, site, output
 
 
 def to_str(s):
@@ -534,3 +534,5 @@ def calc_mean_eff_stress(
     stress_mean = stress_vert_eff * (1 + 2 * k0) / 3
 
     return stress_mean
+
+def 
