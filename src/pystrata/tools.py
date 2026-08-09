@@ -534,5 +534,3 @@ def calc_mean_eff_stress(
     stress_mean = stress_vert_eff * (1 + 2 * k0) / 3
 
     return stress_mean
-
-def 
