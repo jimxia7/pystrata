@@ -390,7 +390,7 @@ class TimeSeriesMotion(Motion):
             - np.square(osc_freq)
             - 2.0j * damping * osc_freq * self.freqs
         )
-
+        
     @classmethod
     def load_at2_file(cls, filename, scale=1.0):
         """Read an AT2 formatted time series.
@@ -483,8 +483,19 @@ class TimeSeriesMotion(Motion):
         )
         accels *= scale
 
-        return TimeSeriesMotion(filename, description, time_step, accels)
+        return cls(filename, description, time_step, accels)
 
+    
+    def scaled_to_pga(self,scaled_pga = 1.0):
+        pga = self.pga
+        scale_factor = scaled_pga/self.pga
+
+        scaled_accels = scale_factor*self._accels
+
+        return TimeSeriesMotion(self._filename,
+                                self._description,
+                                self._time_step,
+                                scaled_accels)
 
 # FIXME: How do multiple inheritence properly?
 class RvtMotion(pyrvt.motions.RvtMotion, Motion):
