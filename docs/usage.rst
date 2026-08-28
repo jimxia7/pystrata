@@ -31,7 +31,7 @@ by point-source parameters.
 
 .. autoclass:: TimeSeriesMotion
    :special-members: __init__
-   :members: load_at2_file, load_smc_file
+   :members: load_at2_file, load_smc_file, load_v2_file
 
 .. autoclass:: RvtMotion
    :special-members: __init__

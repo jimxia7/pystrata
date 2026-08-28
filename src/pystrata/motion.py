@@ -485,7 +485,128 @@ class TimeSeriesMotion(Motion):
 
         return cls(filename, description, time_step, accels)
 
-    
+    @classmethod
+    def load_v2_file(cls, filename, scale=1.0, channel=1):
+        """Read a CSMIP/COSMOS "Volume 2" (``.V2``) formatted time series.
+
+        These files are distributed by the California Geological Survey / CESMD
+        and contain instrument- and baseline-corrected acceleration, velocity,
+        and displacement blocks. Only the acceleration block is read.
+
+        A single ``.V2`` file frequently bundles every channel (component)
+        recorded at a station, each terminated by a line such as
+        ``/&  ---------- End of data for channel  1 ----------``. Use *channel*
+        to pick which one to load.
+
+        Rather than depend on the exact number of header lines -- which varies
+        between processing vintages -- the parser locates the acceleration data
+        descriptor line, e.g.::
+
+            15200 points of accel data equally spaced at  .005 sec, in cm/sec2. (8f10.6)
+
+        and reads the number of points, time step, fixed-column width, and units
+        from it. Accelerations reported in cm/sec/sec are converted to units of
+        *g* so the resulting motion matches the other ``load_*`` constructors.
+
+        Parameters
+        ----------
+        filename: str
+            Filename to open.
+        scale: float, default: 1.
+            Scale factor to apply to the motion (after unit conversion).
+        channel: int or str, default: 1
+            Which channel to read from a multi-channel file. An ``int`` is the
+            1-based position of the channel in the file; a ``str`` is matched
+            (case-insensitively, as a substring) against the channel's
+            component label, e.g. ``"360"`` or ``"Up"``.
+
+        Returns
+        -------
+        :class:`TimeSeriesMotion`
+        """
+        from .tools import parse_fixed_width
+
+        with open(filename) as fp:
+            text = fp.read()
+
+        # Split the file into per-channel blocks. Each channel ends with a
+        # marker line like "/&  ---------- End of data for channel 1 ----------".
+        blocks = [
+            b
+            for b in re.split(r"(?m)^.*End of data for channel.*$", text)
+            if b.strip()
+        ]
+        if not blocks:
+            blocks = [text]
+
+        def _station_component(block):
+            # The header repeats a line of "<record-id>  <station>  Chan N: <comp>"
+            m = re.search(
+                r"(?m)^\s*\S+\s{2,}(.+?)\s{2,}Chan\s*\d+:\s*(.+?)\s*$", block
+            )
+            if m:
+                return m.group(1).strip(), m.group(2).strip()
+            m = re.search(r"Chan\s*\d+:\s*(.+)", block)
+            comp = re.split(r"\s{2,}", m.group(1).strip())[0] if m else ""
+            return "", comp
+
+        parsed = [_station_component(b) for b in blocks]
+        components = [comp for _, comp in parsed]
+
+        if isinstance(channel, str):
+            matches = [
+                i for i, c in enumerate(components) if channel.lower() in c.lower()
+            ]
+            if not matches:
+                raise ValueError(
+                    f"No channel matching {channel!r} in '{filename}'. "
+                    f"Available components: {components}."
+                )
+            index = matches[0]
+        else:
+            index = int(channel) - 1
+            if not 0 <= index < len(blocks):
+                raise ValueError(
+                    f"Channel {channel} is out of range for '{filename}', which "
+                    f"has {len(blocks)} channel(s): {components}."
+                )
+
+        lines = blocks[index].splitlines()
+        station, component = parsed[index]
+        description = "; ".join(part for part in (station, component) if part)
+
+        for i, line in enumerate(lines):
+            m = re.search(
+                r"(\d+)\s+points of acc\w* data.*?equally spaced at\s+"
+                r"([0-9.]+)\s*sec",
+                line,
+                re.IGNORECASE,
+            )
+            if m:
+                break
+        else:
+            raise ValueError(
+                f"Could not find an acceleration data block in '{filename}'."
+            )
+
+        count = int(m.group(1))
+        time_step = float(m.group(2))
+
+        width_match = re.search(r"\(\s*\d*[fFeEgG](\d+)\.", line)
+        width = int(width_match.group(1)) if width_match else 10
+        in_cgs = "cm/s" in line.lower()
+
+        data_lines = lines[i + 1 :]
+        accels = np.array(parse_fixed_width(count * [(width, float)], data_lines))
+
+        if in_cgs:
+            # Convert cm/sec/sec to g
+            accels /= GRAVITY * 100
+
+        accels *= scale
+
+        return cls(filename, description, time_step, accels)
+
     def scaled_to_pga(self,scaled_pga = 1.0):
         pga = self.pga
         scale_factor = scaled_pga/self.pga
