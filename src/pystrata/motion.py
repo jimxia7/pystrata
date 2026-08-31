@@ -607,6 +607,123 @@ class TimeSeriesMotion(Motion):
 
         return cls(filename, description, time_step, accels)
 
+    @classmethod
+    def load_v2c_file(cls, filename, scale=1.0):
+        """Read a CESMD/COSMOS "V2c" (``.V2c``) formatted time series.
+
+        These files are distributed by the USGS / CESMD in the COSMOS strong
+        motion data format (``Format v01.20``). Unlike the CSMIP ``.V2`` files
+        read by :meth:`load_v2_file`, a ``.V2c`` file holds a *single* channel
+        and a *single* data block: the acceleration, velocity, and displacement
+        series each live in their own file (``*.acc.V2c``, ``*.vel.V2c``,
+        ``*.dis.V2c``) and every component (e.g. ``HNE``/``HNN``/``HNZ``) is a
+        separate file as well. Only ``*.acc.V2c`` files are meaningful here.
+
+        The header consists of a handful of free-form text lines followed by an
+        integer-header block, a real-header block, and comment lines, each
+        introduced by a self-describing line such as::
+
+             100 Real-header values follow on  20 lines, Format= (5F15.6)
+
+        The data are introduced by a descriptor line such as::
+
+            26219 acceleration pts, approx  131 secs, units=cm/sec2(04),Format=(1E15.6)
+
+        The number of points, units, and fixed-column width are read from that
+        line; the time step is taken from the real header (COSMOS real-header
+        entry 34). Accelerations reported in cm/sec/sec are converted to units
+        of *g* so the resulting motion matches the other ``load_*``
+        constructors.
+
+        Parameters
+        ----------
+        filename: str
+            Filename to open.
+        scale: float, default: 1.
+            Scale factor to apply to the motion (after unit conversion).
+
+        Returns
+        -------
+        :class:`TimeSeriesMotion`
+        """
+        from .tools import parse_fixed_width
+
+        with open(filename) as fp:
+            text = fp.read()
+
+        lines = text.splitlines()
+
+        # Station / component description.
+        m = re.search(r"Statn No:\s*\S+\s+Code:\s*(\S+)", text)
+        station = m.group(1) if m else ""
+        m = re.search(r"Sta\s+Chan\s*\d+:\s*([^(]+?)\s*(?:\(|Location:|$)", text)
+        component = m.group(1).strip() if m else ""
+        description = "; ".join(part for part in (station, component) if part)
+
+        # Real header -- the time step lives here, not in the descriptor line.
+        m = re.search(
+            r"(\d+)\s+Real[- ]header values follow on\s+(\d+)\s+lines"
+            r".*?Format\s*=\s*\(\s*\d*\s*[a-zA-Z](\d+)\.",
+            text,
+            re.IGNORECASE,
+        )
+        if not m:
+            raise ValueError(f"Could not find a real-header block in '{filename}'.")
+        n_real = int(m.group(1))
+        n_real_lines = int(m.group(2))
+        real_width = int(m.group(3))
+        start = text[: m.start()].count("\n") + 1
+        real_header = parse_fixed_width(
+            n_real * [(real_width, float)],
+            list(lines[start : start + n_real_lines]),
+        )
+        # COSMOS real-header entry 34 (1-based) is the time interval in seconds.
+        time_step = real_header[33]
+
+        if not 0 < time_step < 10:
+            raise ValueError(
+                f"Implausible time step {time_step} read from the real header of "
+                f"'{filename}'."
+            )
+
+        # Acceleration data descriptor line, e.g.
+        #   26219 acceleration pts, approx  131 secs, units=cm/sec2(04),Format=(1E15.6)
+        for i, line in enumerate(lines):
+            m = re.search(
+                r"(\d+)\s+acc\w*\s+(?:pts|points).*?"
+                r"units=\s*([^\s,()]+).*?"
+                r"Format\s*=\s*\(\s*\d*\s*[a-zA-Z](\d+)\.",
+                line,
+                re.IGNORECASE,
+            )
+            if m:
+                break
+        else:
+            raise ValueError(
+                f"Could not find an acceleration data block in '{filename}'."
+            )
+
+        count = int(m.group(1))
+        units = m.group(2)
+        width = int(m.group(3))
+
+        data_lines = lines[i + 1 :]
+        accels = np.array(parse_fixed_width(count * [(width, float)], data_lines))
+
+        if accels.size != count:
+            warnings.warn(
+                f"V2c file '{filename}' specifies {count} points, but "
+                f"{accels.size} accelerations were read."
+            )
+
+        if "cm/s" in units.lower():
+            # Convert cm/sec/sec to g
+            accels /= GRAVITY * 100
+
+        accels *= scale
+
+        return cls(filename, description, time_step, accels)
+
     def scaled_to_pga(self,scaled_pga = 1.0):
         pga = self.pga
         scale_factor = scaled_pga/self.pga

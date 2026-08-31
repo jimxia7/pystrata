@@ -182,3 +182,15 @@ def test_ts_load_v2_file_bad_channel():
         motion.TimeSeriesMotion.load_v2_file(
             FPATH_DATA / "alumrock.v2", channel="EW"
         )
+
+
+def test_ts_load_v2c_file():
+    tsm = motion.TimeSeriesMotion.load_v2c_file(FPATH_DATA / "calexico.acc.V2c")
+    assert tsm.description == "NP-5053; 90 Deg"
+
+    # Time step comes from the COSMOS real header, not the descriptor line.
+    assert_allclose(tsm.time_step, 0.005)
+    assert tsm.accels.size == 24
+
+    # File stores cm/sec/sec; loader converts to g
+    assert_allclose(tsm.accels[0], -9.010982e-07 / (9.80665 * 100), rtol=1e-3)

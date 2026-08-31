@@ -40,6 +40,10 @@ PyStrata supports several standard formats:
     motion = pystrata.motion.TimeSeriesMotion.load_v2_file("motion.V2", channel=1)
     motion = pystrata.motion.TimeSeriesMotion.load_v2_file("motion.V2", channel="360")
 
+    # CESMD/COSMOS "V2c" format (from USGS/CESMD). One channel per file; the
+    # acceleration series lives in the ``*.acc.V2c`` file.
+    motion = pystrata.motion.TimeSeriesMotion.load_v2c_file("motion.acc.V2c")
+
 **Manual Creation**
 
 You can also create time series motions directly:
