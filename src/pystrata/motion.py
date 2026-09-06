@@ -24,6 +24,7 @@
 import enum
 import re
 import warnings
+from pathlib import Path
 
 import numpy as np
 import pyrvt
@@ -265,6 +266,7 @@ class TimeSeriesMotion(Motion):
         return self.time_step * self._fourier_amps
 
     def calc_time_series(self, tf=None):
+        self._calc_fourier_spectrum()
         if tf is None:
             ts = np.fft.irfft(self.fourier_amps / self.time_step)
         else:
@@ -417,7 +419,9 @@ class TimeSeriesMotion(Motion):
             next(fp)
             npts, time_step = _parse_at2_header(next(fp))
 
-            accels = np.array([float(part) for line in fp for part in line.split()])
+            # Rows may be ragged (the last line is usually short), so parse
+            # the remaining text as a flat stream of floats.
+            accels = np.array(fp.read().split(), dtype=float)
 
         if accels.size != npts:
             warnings.warn(
@@ -444,8 +448,7 @@ class TimeSeriesMotion(Motion):
         """
         from .tools import parse_fixed_width
 
-        with open(filename) as fp:
-            lines = list(fp)
+        lines = Path(filename).read_text(encoding="utf-8").splitlines()
 
         # 11 lines of strings
         lines_str = [lines.pop(0) for _ in range(11)]
@@ -526,14 +529,15 @@ class TimeSeriesMotion(Motion):
         """
         from .tools import parse_fixed_width
 
-        with open(filename) as fp:
-            text = fp.read()
+        text = Path(filename).read_text()
 
         # Split the file into per-channel blocks. Each channel ends with a
         # marker line like "/&  ---------- End of data for channel 1 ----------".
+        # Older (1970s-80s) CSMIP files write the marker and the "Chan N:"
+        # headers in all caps, so match case-insensitively.
         blocks = [
             b
-            for b in re.split(r"(?m)^.*End of data for channel.*$", text)
+            for b in re.split(r"(?im)^.*End of data for chan(?:nel)?.*$", text)
             if b.strip()
         ]
         if not blocks:
@@ -542,11 +546,11 @@ class TimeSeriesMotion(Motion):
         def _station_component(block):
             # The header repeats a line of "<record-id>  <station>  Chan N: <comp>"
             m = re.search(
-                r"(?m)^\s*\S+\s{2,}(.+?)\s{2,}Chan\s*\d+:\s*(.+?)\s*$", block
+                r"(?im)^\s*\S+\s{2,}(.+?)\s{2,}Chan\s*\d+:\s*(.+?)\s*$", block
             )
             if m:
                 return m.group(1).strip(), m.group(2).strip()
-            m = re.search(r"Chan\s*\d+:\s*(.+)", block)
+            m = re.search(r"Chan\s*\d+:\s*(.+)", block, re.IGNORECASE)
             comp = re.split(r"\s{2,}", m.group(1).strip())[0] if m else ""
             return "", comp
 
@@ -608,32 +612,36 @@ class TimeSeriesMotion(Motion):
         return cls(filename, description, time_step, accels)
 
     @classmethod
-    def load_v2c_file(cls, filename, scale=1.0):
+    def load_v2c_file(cls, filename, scale=1.0, channel=1):
         """Read a CESMD/COSMOS "V2c" (``.V2c``) formatted time series.
 
         These files are distributed by the USGS / CESMD in the COSMOS strong
-        motion data format (``Format v01.20``). Unlike the CSMIP ``.V2`` files
-        read by :meth:`load_v2_file`, a ``.V2c`` file holds a *single* channel
-        and a *single* data block: the acceleration, velocity, and displacement
-        series each live in their own file (``*.acc.V2c``, ``*.vel.V2c``,
-        ``*.dis.V2c``) and every component (e.g. ``HNE``/``HNN``/``HNZ``) is a
-        separate file as well. Only ``*.acc.V2c`` files are meaningful here.
+        motion data format (``Format v01.20``). Each channel is a
+        self-contained record -- text header, integer header, real header,
+        comment lines, and a single data block -- terminated by a marker line
+        such as ``End-of-data for ChanHNE acceleration``. A file may hold one
+        channel (the common CESMD download, where each component and each of
+        acceleration / velocity / displacement is its own ``*.acc.V2c``,
+        ``*.vel.V2c``, ``*.dis.V2c`` file) or several channels concatenated
+        back-to-back. CGS downloads (e.g. ``CE47380.V2C``) also interleave
+        the integrated velocity and displacement records after each channel's
+        acceleration record; those are skipped, so *channel* always counts
+        acceleration records only. Use *channel* to pick which one to load.
 
-        The header consists of a handful of free-form text lines followed by an
-        integer-header block, a real-header block, and comment lines, each
-        introduced by a self-describing line such as::
+        Each channel's header blocks are introduced by self-describing lines
+        such as::
 
              100 Real-header values follow on  20 lines, Format= (5F15.6)
 
-        The data are introduced by a descriptor line such as::
+        and the data by a descriptor line such as::
 
             26219 acceleration pts, approx  131 secs, units=cm/sec2(04),Format=(1E15.6)
 
         The number of points, units, and fixed-column width are read from that
         line; the time step is taken from the real header (COSMOS real-header
-        entry 34). Accelerations reported in cm/sec/sec are converted to units
-        of *g* so the resulting motion matches the other ``load_*``
-        constructors.
+        entry 34) because the descriptor only gives a rounded duration.
+        Accelerations reported in cm/sec/sec are converted to units of *g* so
+        the resulting motion matches the other ``load_*`` constructors.
 
         Parameters
         ----------
@@ -641,6 +649,12 @@ class TimeSeriesMotion(Motion):
             Filename to open.
         scale: float, default: 1.
             Scale factor to apply to the motion (after unit conversion).
+        channel: int or str, default: 1
+            Which channel to read from a multi-channel file. An ``int`` is the
+            1-based position of the channel in the file; a ``str`` is matched
+            (case-insensitively, as a substring) against the channel's
+            component label (e.g. ``"360"`` or ``"Up"``) or its SEED channel
+            code from the end-of-data marker (e.g. ``"HNE"``).
 
         Returns
         -------
@@ -648,31 +662,97 @@ class TimeSeriesMotion(Motion):
         """
         from .tools import parse_fixed_width
 
-        with open(filename) as fp:
-            text = fp.read()
+        text = Path(filename).read_text()
 
-        lines = text.splitlines()
+        # Split the file into per-channel blocks. Each channel ends with a
+        # marker line like "End-of-data for ChanHNE acceleration"; keep the
+        # marker so the channel code on it can be used for selection.
+        # Files that also carry the integrated velocity and displacement (e.g.
+        # "End-of-data for chan  1 velocity data") are filtered down to the
+        # acceleration records so *channel* counts sensor channels only.
+        marker = re.compile(
+            r"(?mi)^\s*End[- ]of[- ]data for\s+(?:Chan\s*)?(\S*).*$"
+        )
+        accel_desc = re.compile(
+            r"(?mi)^\s*\d+\s+acc\w*\s+(?:pts|points)\b.*units\s*="
+        )
+        blocks = []
+        codes = []
+        pos = 0
+        for m in marker.finditer(text):
+            block = text[pos : m.start()]
+            if block.strip() and accel_desc.search(block):
+                blocks.append(block)
+                code = m.group(1).strip()
+                # "chan  1 acceleration data" yields a bare channel number, which
+                # is not a SEED code; only keep alphabetic codes for matching.
+                codes.append(code if not code.isdigit() else "")
+            pos = m.end()
+        tail = text[pos:]
+        if tail.strip() and accel_desc.search(tail):
+            blocks.append(tail)
+            codes.append("")
 
-        # Station / component description.
-        m = re.search(r"Statn No:\s*\S+\s+Code:\s*(\S+)", text)
-        station = m.group(1) if m else ""
-        m = re.search(r"Sta\s+Chan\s*\d+:\s*([^(]+?)\s*(?:\(|Location:|$)", text)
-        component = m.group(1).strip() if m else ""
+        if not blocks:
+            raise ValueError(
+                f"Could not find any acceleration data blocks in '{filename}'."
+            )
+
+        def _station_component(block):
+            # Station numbers may contain spaces (e.g. "Statn No: 05- 47380").
+            m = re.search(r"Statn No:.*?Code:\s*(\S+)", block)
+            station = m.group(1) if m else ""
+            m = re.search(
+                r"Sta\s+Chan\s*\d+:\s*([^(]+?)\s*(?:\(|Location:|$)", block
+            )
+            component = m.group(1).strip() if m else ""
+            return station, component
+
+        parsed = [_station_component(b) for b in blocks]
+        components = [comp for _, comp in parsed]
+
+        if isinstance(channel, str):
+            key = channel.lower()
+            matches = [
+                i
+                for i, (comp, code) in enumerate(zip(components, codes))
+                if key in comp.lower() or (code and key in code.lower())
+            ]
+            if not matches:
+                raise ValueError(
+                    f"No channel matching {channel!r} in '{filename}'. "
+                    f"Available components: {components}, codes: {codes}."
+                )
+            index = matches[0]
+        else:
+            index = int(channel) - 1
+            if not 0 <= index < len(blocks):
+                raise ValueError(
+                    f"Channel {channel} is out of range for '{filename}', which "
+                    f"has {len(blocks)} channel(s): {components}."
+                )
+
+        block = blocks[index]
+        lines = block.splitlines()
+        station, component = parsed[index]
         description = "; ".join(part for part in (station, component) if part)
 
         # Real header -- the time step lives here, not in the descriptor line.
         m = re.search(
             r"(\d+)\s+Real[- ]header values follow on\s+(\d+)\s+lines"
             r".*?Format\s*=\s*\(\s*\d*\s*[a-zA-Z](\d+)\.",
-            text,
+            block,
             re.IGNORECASE,
         )
         if not m:
-            raise ValueError(f"Could not find a real-header block in '{filename}'.")
+            raise ValueError(
+                f"Could not find a real-header block for channel {channel!r} in "
+                f"'{filename}'."
+            )
         n_real = int(m.group(1))
         n_real_lines = int(m.group(2))
         real_width = int(m.group(3))
-        start = text[: m.start()].count("\n") + 1
+        start = block[: m.start()].count("\n") + 1
         real_header = parse_fixed_width(
             n_real * [(real_width, float)],
             list(lines[start : start + n_real_lines]),
@@ -700,7 +780,8 @@ class TimeSeriesMotion(Motion):
                 break
         else:
             raise ValueError(
-                f"Could not find an acceleration data block in '{filename}'."
+                f"Could not find an acceleration data block for channel "
+                f"{channel!r} in '{filename}'."
             )
 
         count = int(m.group(1))
@@ -723,6 +804,41 @@ class TimeSeriesMotion(Motion):
         accels *= scale
 
         return cls(filename, description, time_step, accels)
+
+    @classmethod
+    def load(cls, filename, scale=1.0, **kwargs):
+        """Load a time series, choosing the reader from the file extension.
+
+        Parameters
+        ----------
+        filename: str
+            Filename to open. The extension (``.at2``, ``.smc``, ``.v2``, or
+            ``.v2c``, case-insensitive) selects the reader.
+        scale: float, default: 1.
+            Scale factor to apply to the motion.
+        **kwargs:
+            Passed through to the selected ``load_*`` reader, e.g. ``channel``
+            for ``.v2`` and ``.v2c`` files.
+
+        Returns
+        -------
+        :class:`TimeSeriesMotion`
+        """
+        loaders = {
+            ".at2": cls.load_at2_file,
+            ".smc": cls.load_smc_file,
+            ".v2": cls.load_v2_file,
+            ".v2c": cls.load_v2c_file,
+        }
+        suffix = Path(filename).suffix.lower()
+        try:
+            loader = loaders[suffix]
+        except KeyError:
+            raise ValueError(
+                f"Unsupported file extension {suffix!r} for '{filename}'. "
+                f"Supported extensions: {sorted(loaders)}."
+            ) from None
+        return loader(filename, scale=scale, **kwargs)
 
     def scaled_to_pga(self,scaled_pga = 1.0):
         pga = self.pga

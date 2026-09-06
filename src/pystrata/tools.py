@@ -534,3 +534,95 @@ def calc_mean_eff_stress(
     stress_mean = stress_vert_eff * (1 + 2 * k0) / 3
 
     return stress_mean
+
+def scale_damping_values(
+    profile: site.Profile,
+    target_site_atten: float,
+    exclude: None | str | list[str] | Callable = None,
+    inplace: bool = False,
+) -> site.Profile:
+    """
+    Adjust the minimum damping values of a site profile so that the total site
+    attenuation matches a specified target value. Optionally, certain layers can
+    be excluded from adjustment.
+
+    The function computes the attenuation due to impedance (scattering) effects
+    and any excluded layers, then distributes the remaining required attenuation
+    among the selected layers by updating their minimum damping values.  The
+    approach  assumes that Q is proportional to Vs (i.e., Q~ γ Vs, in which γ is
+    a proportionality constant; Silva and Darragh, 1995).
+
+    The profile can be modified in-place or a copy can be returned.
+
+    Parameters
+    ----------
+    profile : site.Profile
+        Site profile to adjust.
+    target_site_atten : float
+        Target total site attenuation [sec].
+    exclude : None or str or list of str or Callable, optional
+        Pattern or callable used to exclude layers from this adjustment.
+        - If None, all layers are used.
+        - If str, `re.match` is used to test against `layer.soil_type.name`.
+        - If list of str, `layer.soil_type.name` is tested not to be included in
+        this list.
+        - If callable, the function should take a `site.Layer` and return True
+        for excluded layers.
+    inplace : bool, optional
+        If True, the provided profile is modified in-place. If False (default),
+        a copy is returned.
+
+    Returns
+    -------
+    site.Profile
+        Modified profile with adjusted minimum damping values.
+
+    Raises
+    ------
+    RuntimeError
+        If no layers are selected for adjustment or if the target attenuation cannot
+        be achieved.
+    """
+
+    if not inplace:
+        profile = profile.copy()
+
+    # Exclude the half-space and the excluded soilayer types
+    layers = []
+    layers_exc = []
+    for layer in profile:
+        if isinstance(exclude, Callable) and exclude(layer):
+            layers_exc.append(layer)
+        elif isinstance(exclude, str) and re.match(exclude, layer.soil_type.name):
+            layers_exc.append(layer)
+        elif isinstance(exclude, list) and any(
+            e in layer.soil_type.name for e in exclude
+        ):
+            layers_exc.append(layer)
+        else:
+            layers.append(layer)
+
+    # Site attenuation from the excluded layers. This is included in the total,
+    # but the damping isn't adjusted
+    site_atten_exc = sum(layer.incr_site_atten for layer in layers_exc)
+    site_atten = profile.site_attenuation()
+    
+    if not layers:
+        raise RuntimeError("No layers selected")
+
+    # Adjust the target by the scattering and excluded layer attenuation
+    remainder = target_site_atten - site_atten_exc
+
+    if remainder <= 0:
+        print(site_atten_exc, target_site_atten)
+        raise RuntimeError("Unable to achieve target attenuation")
+
+    # Copy over the damping values. Damping might not be the fullayer length
+    # because of the crust truncation
+    for layer in layers:
+        layer.damping_min = layer.damping_min*remainder/site_atten
+
+    # Reset the initial properties
+    profile.reset_layers()
+
+    return profile

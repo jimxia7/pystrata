@@ -194,3 +194,69 @@ def test_ts_load_v2c_file():
 
     # File stores cm/sec/sec; loader converts to g
     assert_allclose(tsm.accels[0], -9.010982e-07 / (9.80665 * 100), rtol=1e-3)
+
+
+@pytest.mark.parametrize(
+    "channel,component",
+    [
+        (1, "90 Deg"),
+        (2, "360 Deg"),
+        (3, "Up"),
+        # Match on component label
+        ("360", "360 Deg"),
+        ("up", "Up"),
+        # Match on SEED code from the end-of-data marker
+        ("HNE", "90 Deg"),
+        ("hnz", "Up"),
+    ],
+)
+def test_ts_load_v2c_file_channel(channel, component):
+    tsm = motion.TimeSeriesMotion.load_v2c_file(
+        FPATH_DATA / "calexico.acc.V2c", channel=channel
+    )
+    assert tsm.description == f"NP-5053; {component}"
+    assert tsm.accels.size == 24
+    assert_allclose(tsm.time_step, 0.005)
+
+
+@pytest.mark.parametrize(
+    "channel,component,pga",
+    [
+        # CGS files bundle acceleration, velocity, and displacement records for
+        # every channel; only the acceleration records count as channels.
+        (1, "90 deg", 0.00607),
+        (2, "360 deg", 0.00965),
+        (3, "Up", 0.05091),
+        ("360", "360 deg", 0.00965),
+        ("up", "Up", 0.05091),
+    ],
+)
+def test_ts_load_v2c_file_multichannel_vel_dis(channel, component, pga):
+    tsm = motion.TimeSeriesMotion.load_v2c_file(
+        FPATH_DATA / "gilroy2.V2C", channel=channel
+    )
+    assert tsm.description == f"CE-47380; {component}"
+    assert tsm.accels.size == 16
+    assert_allclose(tsm.time_step, 0.005)
+    # Peak of the trimmed record still lands within the full record's range.
+    assert 0 < tsm.pga <= pga
+
+
+def test_ts_load_v2c_file_multichannel_vel_dis_bad_channel():
+    with pytest.raises(ValueError):
+        motion.TimeSeriesMotion.load_v2c_file(FPATH_DATA / "gilroy2.V2C", channel=4)
+    with pytest.raises(ValueError):
+        motion.TimeSeriesMotion.load_v2c_file(
+            FPATH_DATA / "gilroy2.V2C", channel="HNE"
+        )
+
+
+def test_ts_load_v2c_file_bad_channel():
+    with pytest.raises(ValueError):
+        motion.TimeSeriesMotion.load_v2c_file(
+            FPATH_DATA / "calexico.acc.V2c", channel=9
+        )
+    with pytest.raises(ValueError):
+        motion.TimeSeriesMotion.load_v2c_file(
+            FPATH_DATA / "calexico.acc.V2c", channel="EW"
+        )
