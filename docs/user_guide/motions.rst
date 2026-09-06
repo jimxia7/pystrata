@@ -34,6 +34,21 @@ PyStrata supports several standard formats:
     # SMC format (from CESMD/COSMOS)
     motion = pystrata.motion.TimeSeriesMotion.load_smc_file("motion.smc")
 
+    # CSMIP/COSMOS "Volume 2" format (from CESMD/CGS). These files often
+    # bundle every channel recorded at a station; pick one by position or by
+    # matching its component label.
+    motion = pystrata.motion.TimeSeriesMotion.load_v2_file("motion.V2", channel=1)
+    motion = pystrata.motion.TimeSeriesMotion.load_v2_file("motion.V2", channel="360")
+
+    # CESMD/COSMOS "V2c" format (from USGS/CESMD). Usually one channel per
+    # file (``*.acc.V2c``), but several channels may be concatenated; pick one
+    # by position, component label, or SEED channel code. Velocity and
+    # displacement records bundled in the file are skipped, so ``channel``
+    # counts acceleration records only.
+    motion = pystrata.motion.TimeSeriesMotion.load_v2c_file("motion.acc.V2c")
+    motion = pystrata.motion.TimeSeriesMotion.load_v2c_file("motion.acc.V2c", channel="HNE")
+    motion = pystrata.motion.TimeSeriesMotion.load_v2c_file("CE47380.V2C", channel=3)
+
 **Manual Creation**
 
 You can also create time series motions directly:
