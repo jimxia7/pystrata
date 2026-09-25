@@ -612,7 +612,7 @@ class KappaCorrectionMixin(Output):
             Fourier amplitudes at :attr:`freqs_range` used for the kappa fit
         """
         kappa, _ = _fit_kappa(self.freqs_range, amps)
-        delta_kappa = kappa - self.kappa_target
+        delta_kappa = self.kappa_target - kappa
 
         return np.exp(-np.pi * delta_kappa * freqs)
 
@@ -783,7 +783,7 @@ class KappaCorrectedResponseSpectrumOutput(ResponseSpectrumOutput):
 
         kappa = -np.polyfit(self.freqs_range,np.log(fas),1)[0]/np.pi
 
-        delta_kappa = kappa - self.kappa_target
+        delta_kappa = self.kappa_target - kappa
         kappa_corrected_values = np.exp(-np.pi*delta_kappa*calc.motion.freqs)*values
 
         return kappa_corrected_values
@@ -905,7 +905,7 @@ class KappaCorrectedAccelTransferFunctionOutput(AccelTransferFunctionOutput):
 
         kappa = -np.polyfit(self.freqs_range,np.log(fas),1)[0]/np.pi
 
-        delta_kappa = kappa - self.kappa_target
+        delta_kappa = self.kappa_target - kappa
         kappa_corrected_values = np.exp(-np.pi*delta_kappa*calc.motion.freqs)*values
 
         return kappa_corrected_values
@@ -993,7 +993,7 @@ class KappaCorrectedResponseSpectrumRatioOutput(ResponseSpectrumRatioOutput):
 
         kappa = -np.polyfit(self.freqs_range,np.log(fas),1)[0]/np.pi
 
-        delta_kappa = kappa - self.kappa_target
+        delta_kappa = self.kappa_target - kappa
         kappa_corrected_values = np.exp(-np.pi*delta_kappa*calc.motion.freqs)*values
 
         return kappa_corrected_values
