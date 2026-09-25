@@ -32,40 +32,12 @@ import pykooh
 
 from . import motion, propagation, site
 
-
-def to_str(s):
-    """Parse a string and strip the extra characters."""
-    return str(s).strip()
-
-
-def to_float(s):
-    """Try to parse a float."""
-    try:
-        return float(s)
-    except ValueError:
-        return np.nan
-
-
-def parse_fixed_width(types, lines):
-    """Parse a fixed width line."""
-    values = []
-    line = []
-    for width, parser in types:
-        if not line:
-            line = lines.pop(0).replace("\n", "")
-
-        values.append(parser(line[:width]))
-        line = line[width:]
-
-    return values
-
-
-def split_line(line, parsers, sep=" "):
-    """Split a line into pieces and parse the strings."""
-    parts = [part for part in line.split(sep) if part]
-    values = [parser(part) for parser, part in zip(parsers, parts)]
-    return values if len(values) > 1 else values[0]
-
+from .readers import (
+    parse_fixed_width,
+    split_line,
+    to_float,
+    to_str,
+)
 
 def _parse_curves(block, **kwargs):
     """Parse nonlinear curves block."""

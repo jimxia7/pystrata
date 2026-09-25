@@ -19,6 +19,7 @@ dependencies = [
     "setuptools",
     "tomli",
     "xarray",
+    "gmprocess"
 ]
 
 [project.urls]
