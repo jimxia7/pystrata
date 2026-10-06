@@ -889,26 +889,35 @@ class KappaCorrectedAccelTransferFunctionOutput(AccelTransferFunctionOutput):
         return self._kappa_target
 
     def _modify_tf(self, calc, values):
-
-        values_for_kappa = np.interp(self.freqs_range,calc.motion.freqs,values)
+        # values = FAS(loc_out) / FAS(loc_in). Kappa is fit to the actual FAS at
+        # loc_out and the correction is applied to the numerator only.
+        _, loc_out = self._get_locations(calc)
+        tf_out = np.abs(calc.calc_accel_tf(calc.loc_input, loc_out))
 
         if not hasattr(calc.motion, "time_step"):
-            fas = np.interp(self.freqs_range,calc.motion.freqs,calc.motion.fourier_amps)
+            fas = tf_out * np.abs(calc.motion.fourier_amps)
+
         else:
-            _, fas = _compute_fourier_spectrum(
+            _, fas_in = _compute_fourier_spectrum(
                 calc.motion.time_step,
                 calc.motion._accels,
                 freqs=self.freqs_range,
-                ko_bandwidth=self.ko_bandwidth)
+                ko_bandwidth=self.ko_bandwidth,
+            )
+            fas = np.interp(self.freqs_range, calc.motion.freqs, tf_out) * np.abs(fas_in)
 
-        fas = np.abs(values_for_kappa * fas)
+        if self.ko_bandwidth is None:
+            fas = np.interp(self.freqs_range, calc.motion.freqs, fas)
+        else:
+            fas = pykooh.smooth(
+                self.freqs_range, calc.motion.freqs, fas, self.ko_bandwidth
+            )
 
-        kappa = -np.polyfit(self.freqs_range,np.log(fas),1)[0]/np.pi
-
+        kappa, _ = _fit_kappa(self.freqs_range, fas)
         delta_kappa = self.kappa_target - kappa
-        kappa_corrected_values = np.exp(-np.pi*delta_kappa*calc.motion.freqs)*values
 
-        return kappa_corrected_values
+        return np.exp(-np.pi * delta_kappa * self.freqs) * values
+
 
 
 class ResponseSpectrumRatioOutput(RatioBasedOutput):
@@ -964,7 +973,7 @@ class ResponseSpectrumRatioOutput(RatioBasedOutput):
 class KappaCorrectedResponseSpectrumRatioOutput(ResponseSpectrumRatioOutput):
 
     def __init__(self, freqs, freqs_range_for_kappa, kappa_target, location_in, location_out, osc_damping, ko_bandwidth = None):
-        super().__init__(freqs, location_in, location_out, osc_damping)
+        super().__init__(freqs, location_in, location_out, osc_damping,ko_bandwidth)
         self._freqs_range = freqs_range_for_kappa
         self._kappa_target = kappa_target
 

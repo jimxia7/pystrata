@@ -2085,12 +2085,12 @@ class Profile(collections.abc.Container):
         for layer in self:
             st = layer.soil_type
             records.append(
-                (st.name, st.unit_wt, st.damping, layer.thickness, layer.shear_vel)
+                (st.name, st.unit_wt, st.damping, layer.damping_min, layer.thickness, layer.shear_vel)
             )
 
         df = pd.DataFrame(
             records,
-            columns=["soil_type", "unit_wt", "damping", "thickness", "shear_vel"],
+            columns=["soil_type", "unit_wt", "damping", "damping min","thickness", "shear_vel"],
         )
         df["depth"] = np.r_[0, df["thickness"].cumsum().iloc[:-1]]
 

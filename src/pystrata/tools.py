@@ -26,6 +26,7 @@ from collections.abc import Callable
 
 import numpy as np
 import numpy.typing as npt
+from typing import Literal
 import pandas as pd
 import scipy.constants as C
 import pykooh
@@ -35,7 +36,7 @@ from . import motion, propagation, site
 from .readers import (
     parse_fixed_width,
     split_line,
-    to_float,
+    _to_float,
     to_str,
 )
 
@@ -79,7 +80,7 @@ def _parse_soil_profile(block, units, curves, **kwargs):
             unit_wt,
             shear_vel,
         ) = parse_fixed_width(
-            [(5, int), (5, int), (15, to_float)] + 4 * [(10, to_float)], block
+            [(5, int), (5, int), (15, _to_float)] + 4 * [(10, _to_float)], block
         )
 
         st = site.SoilType(
@@ -119,7 +120,7 @@ def _parse_motion(block, **kwargs):
     )
 
     scale, pga, _, header_lines, _ = parse_fixed_width(
-        3 * [(10, to_float)] + 2 * [(5, int)], block
+        3 * [(10, _to_float)] + 2 * [(5, int)], block
     )
 
     m = re.search(r"(\d+)\w(\d+)\.\d+", fmt)
@@ -442,10 +443,14 @@ def adjust_damping_values(
 
 
 def calc_mean_eff_stress(
-    depths: npt.ArrayLike,
+    layers: npt.ArrayLike,
     unit_wt: npt.ArrayLike,
     water_table_depth: float,
     k0: float = 0.5,
+    *,
+    layer_input: Literal["top depth","mid depth", "bot depth", "thickness"] = "thickness",
+    initial_profile_top_depth: float = 0.0,
+    initial_total_stress: float = 0.0,
 ) -> np.ndarray:
     """Compute mean effective stress at layer midpoints.
 
@@ -478,7 +483,27 @@ def calc_mean_eff_stress(
     """
     import warnings
 
-    depths = np.asarray(depths, dtype=float)
+    layers = np.asarray(layers, dtype=float)
+    if layer_input == "thickness":
+        thicknesses = layers
+        depth_mids = np.cumsum(thicknesses) - thicknesses / 2 + initial_profile_top_depth
+    elif layer_input == "top depth":
+        depths = layers+ initial_profile_top_depth
+        thicknesses = np.diff(depths, append=depths[-1])
+        depth_mids = depths + thicknesses / 2
+    elif layer_input == "mid_depth":
+        depth_mids = layers
+        thicknesses = np.empty_like(layers)
+        top = initial_profile_top_depth
+        for i, m in enumerate(layers):
+            thicknesses[i] = 2 * (m - top)
+            top += thicknesses[i]
+    elif layer_input == "bot_depth":
+        thicknesses = np.diff(layers, prepend=initial_profile_top_depth)
+        depth_mids = layers - thicknesses / 2
+    else:
+        raise ValueError("layer_input must be 'top depth', 'mid depth', or 'thickness'.")
+    
     unit_wt = np.asarray(unit_wt, dtype=float)
 
     if np.any((unit_wt < 10) | (unit_wt > 30)):
@@ -490,13 +515,8 @@ def calc_mean_eff_stress(
 
     UNIT_WT_WATER = 9.81  # kN/m³
 
-    # Layer thicknesses (last layer = halfspace with 0 thickness)
-    thicknesses = np.diff(depths, append=depths[-1])
-
-    # Total vertical stress at layer midpoints
-    depth_mids = depths + thicknesses / 2
     stress_increments = unit_wt * thicknesses
-    stress_vert_total = np.cumsum(stress_increments) - stress_increments / 2
+    stress_vert_total = np.cumsum(stress_increments) - stress_increments / 2 + initial_total_stress
 
     # Pore water pressure (zero above water table)
     pore_pressure = np.maximum(0.0, UNIT_WT_WATER * (depth_mids - water_table_depth))
@@ -511,6 +531,7 @@ def scale_damping_values(
     profile: site.Profile,
     target_site_atten: float,
     exclude: None | str | list[str] | Callable = None,
+    exclude_for_scale: None | str | list[str] | Callable = None,
     inplace: bool = False,
 ) -> site.Profile:
     """
@@ -583,7 +604,7 @@ def scale_damping_values(
         raise RuntimeError("No layers selected")
 
     # Adjust the target by the scattering and excluded layer attenuation
-    remainder = target_site_atten - site_atten_exc
+    remainder = site_atten - site_atten_exc
 
     if remainder <= 0:
         print(site_atten_exc, target_site_atten)
@@ -592,7 +613,7 @@ def scale_damping_values(
     # Copy over the damping values. Damping might not be the fullayer length
     # because of the crust truncation
     for layer in layers:
-        layer.damping_min = layer.damping_min*remainder/site_atten
+        layer.damping_min = layer.damping_min*target_site_atten/remainder
 
     # Reset the initial properties
     profile.reset_layers()

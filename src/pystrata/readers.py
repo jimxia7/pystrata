@@ -11,7 +11,7 @@ def to_str(s):
     return str(s).strip()
 
 
-def to_float(s):
+def _to_float(s):
     """Try to parse a float."""
     try:
         return float(s)

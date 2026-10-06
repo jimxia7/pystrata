@@ -555,10 +555,10 @@ class TimeSeriesMotion(Motion):
 
             accels *= scale
 
-            return cls(filename,
-                        description,
-                        time_step,
-                        accels)
+        return cls(filename,
+                    description,
+                    time_step,
+                    accels)
         
 
     def scaled_to_pga(self,scaled_pga = 1.0):
